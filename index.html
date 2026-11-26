@@ -13,6 +13,7 @@
       --text: #0f172a;
       --muted: #64748b;
       --danger: #dc2626;
+      --success: #16a34a;
     }
     * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
     body { margin: 0; background: var(--bg); color: var(--text); }
@@ -85,6 +86,7 @@
       font-weight: 600;
       cursor: pointer;
     }
+    button.btn-success { background: var(--success); }
     button.btn-danger { background: var(--danger); }
     button.btn-sm { padding: 6px 10px; font-size: 0.82rem; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.92rem; }
@@ -141,8 +143,21 @@
 
   <!-- 1. MARKS & DETAILS -->
   <div id="marks" class="section active">
+    <!-- BULK ADD BOX -->
+    <div class="card admin-only" style="border-left-color: var(--success);">
+      <h3 style="margin-top:0;">📋 Bulk Add / Paste All Students at Once (<span class="currentBatchLabel">Batch 1</span>)</h3>
+      <p style="font-size:0.88rem; color:var(--muted); margin-top:0;">
+        Copy columns directly from <strong>Google Sheets / Excel</strong> or type one student per line using commas:<br>
+        <code>Roll No, Student Name, Subject, Marks</code>
+      </p>
+      <textarea id="bulkStudentsInput" rows="5" placeholder="24BA101, Aarav Sharma, Journalism, IA-1: 18/20&#10;24BA102, Diya Nair, Journalism, IA-1: 19/20&#10;24BA103, Rohan Verma, Journalism, IA-1: 16/20"></textarea>
+      <button type="button" class="btn btn-success" onclick="bulkSaveStudents()">📥 Save All Students to <span class="currentBatchLabel">Batch 1</span></button>
+      <span id="bulkStatus" style="margin-left:10px; font-size:0.88rem; font-weight:600; color:var(--success);"></span>
+    </div>
+
+    <!-- SINGLE STUDENT ADD / EDIT BOX -->
     <div class="card admin-only">
-      <h3 style="margin-top:0;">➕ Add / Update Student Record (<span class="currentBatchLabel">Batch 1</span>)</h3>
+      <h3 style="margin-top:0;">➕ Add / Edit Single Student (<span class="currentBatchLabel">Batch 1</span>)</h3>
       <input type="text" id="stuReg" placeholder="Register / Roll Number (e.g., 24BA101)" />
       <input type="text" id="stuName" placeholder="Student Full Name" />
       <input type="text" id="stuCourse" placeholder="Subject / Paper Name" />
@@ -240,7 +255,7 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
   </div>
 </div>
 
-<!-- STANDARD UI CONTROLS (WORKS IMMEDIATELY) -->
+<!-- STANDARD UI CONTROLS -->
 <script>
   let currentBatch = localStorage.getItem('selectedBatch') || 'Batch 1';
   document.getElementById('activeBatchSelect').value = currentBatch;
@@ -270,7 +285,7 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBVGHkagJ2Ap34oeWhAPKd9r26CnaZXzRU",
@@ -318,16 +333,19 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
 
   onAuthStateChanged(auth, (user) => {
     isAdmin = !!user;
-    document.getElementById('authStatus').textContent = isAdmin ? `Lecturer Mode (${user.email})` : "Student View (Read-Only)";
-    document.getElementById('loginToggleBtn').style.display = isAdmin ? 'none' : 'inline-block';
-    document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
-    document.querySelectorAll('.admin-only').forEach(el => {
-      el.style.display = isAdmin ? (el.tagName === 'TH' || el.tagName === 'TD' ? 'table-cell' : 'block') : 'none';
-    });
-    window.renderAll();
-  });
+    document.getElementById('authStatus').textContent = isAdmin ? `Lecturer Mode (${user.email})` : "Student View (Read-Only)"; document.getElementById('loginToggleBtn').style.display = isAdmin ? 'none' : 'inline-block'; document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none'; document.querySelectorAll('.admin-only').forEach(el => { el.style.display = isAdmin ? (el.tagName === 'TH' \vert{}\vert{} el.tagName === 'TD' ? 'table-cell' : 'block') : 'none'; }); window.renderAll(); });  // --- 1A. BULK SAVE STUDENTS (SUPPORTS GOOGLE SHEETS/EXCEL TABS OR COMMAS) --- window.bulkSaveStudents = async () => { const raw = document.getElementById('bulkStudentsInput').value.trim(); const statusEl = document.getElementById('bulkStatus'); if (!raw) return alert("Paste or type at least one student line first!");  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0); const batchWrite = writeBatch(db); let count = 0;  lines.forEach(line => { // Split by Tab (if copied from Excel/Google Sheets) or Comma const parts = line.includes('\t') ? line.split('\t').map(p => p.trim()) : line.split(',').map(p => p.trim());  const reg = (parts[0] \vert{}\vert{} '').toUpperCase(); const name = parts[1] \vert{}\vert{} ''; const course = parts[2] \vert{}\vert{} ''; const marks = parts.slice(3).join(', ') \vert{}\vert{} 'Pending';  if (reg && name) { const docId = `${currentBatch}_${reg}`; batchWrite.set(doc(db, "students", docId), { docId, batch: currentBatch, reg, name, course, marks }); count++; } });  if (count === 0) return alert("Could not read any valid rows. Make sure each line has at least Roll No and Name.");  statusEl.textContent = `Saving ${count} students...`;
+    try {
+      await batchWrite.commit();
+      document.getElementById('bulkStudentsInput').value = "";
+      statusEl.textContent = `✅ Saved ${count} students to${currentBatch}!`;
+      setTimeout(() => { statusEl.textContent = ""; }, 4000);
+    } catch (e) {
+      statusEl.textContent = "";
+      alert("Bulk save error: " + e.message);
+    }
+  };
 
-  // --- 1. MARKS & STUDENTS ---
+  // --- 1B. SINGLE STUDENT SAVE / EDIT ---
   window.saveStudent = async () => {
     const reg = document.getElementById('stuReg').value.trim().toUpperCase();
     const name = document.getElementById('stuName').value.trim();
@@ -353,7 +371,7 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
     document.getElementById('stuName').value = s.name;
     document.getElementById('stuCourse').value = s.course;
     document.getElementById('stuMarks').value = s.marks;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('stuMarks').focus();
   };
 
   window.deleteStudent = async (docId) => {
@@ -369,15 +387,15 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
     const filter = document.getElementById('searchReg').value.toLowerCase();
     const filtered = allStudents
       .filter(s => (s.batch || 'Batch 1') === currentBatch)
-      .filter(s => s.reg.toLowerCase().includes(filter) || s.name.toLowerCase().includes(filter));
+      .filter(s => s.reg.toLowerCase().includes(filter) || s.name.toLowerCase().includes(filter))
+      .sort((a, b) => a.reg.localeCompare(b.reg));
 
     document.getElementById('studentsTable').innerHTML = filtered.map(s => `
       <tr>
         <td><strong>${s.reg}</strong></td>
         <td>${s.name}</td>
         <td>${s.course}</td>
-        <td>${s.marks}</td>
-        ${isAdmin ? `<td>
+        <td>${s.marks}</td>${isAdmin ? `<td>
           <button type="button" class="btn btn-sm" onclick="editStudent('${s.docId}')">Edit</button>
           <button type="button" class="btn btn-danger btn-sm" onclick="deleteStudent('${s.docId}')">X</button>
         </td>` : ''}
@@ -409,202 +427,6 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
     const filtered = allDates.filter(d => (d.batch || 'Batch 1') === currentBatch);
     document.getElementById('datesList').innerHTML = filtered.map(item => `
       <div class="card">
-        <span class="badge badge-date">📅 ${item.date}</span>
-        ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('dates','${item.id}')">Delete</button>` : ''}
+        <span class="badge badge-date">📅 ${item.date}</span>${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('dates','${item.id}')">Delete</button>` : ''}
         <h4 style="margin:8px 0 4px;">${item.title}</h4>
-        <p style="margin:0; color:var(--muted);">${item.desc}</p>
-      </div>
-    `).join('') || `<div class="card">No upcoming dates posted for ${currentBatch}.</div>`;
-  }
-
-  // --- 3. LECTURE NOTES ---
-  window.addNote = async () => {
-    const title = document.getElementById('noteTitle').value.trim();
-    const subject = document.getElementById('noteSubject').value.trim();
-    const link = document.getElementById('noteLink').value.trim();
-    const summary = document.getElementById('noteSummary').value.trim();
-    if (!title) return alert("Enter note title!");
-    await addDoc(collection(db, "notes"), { batch: currentBatch, title, subject, link, summary, created: Date.now() });
-    document.getElementById('noteTitle').value = "";
-    document.getElementById('noteSubject').value = "";
-    document.getElementById('noteLink').value = "";
-    document.getElementById('noteSummary').value = "";
-  };
-
-  onSnapshot(query(collection(db, "notes"), orderBy("created", "desc")), (snap) => {
-    allNotes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderNotes();
-  });
-
-  function renderNotes() {
-    const filtered = allNotes.filter(n => (n.batch || 'Batch 1') === currentBatch);
-    document.getElementById('notesList').innerHTML = filtered.map(n => `
-      <div class="card">
-        <span class="badge badge-date">${n.subject || currentBatch}</span>
-        ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('notes','${n.id}')">Delete</button>` : ''}
-        <h4 style="margin:8px 0 6px;">${n.title}</h4>
-        <p style="white-space:pre-wrap; margin:0 0 10px;">${n.summary}</p>
-        ${n.link ? `<a href="${n.link}" target="_blank" class="btn btn-sm" style="text-decoration:none; display:inline-block;">📥 Open / Download Notes</a>` : ''}
-      </div>
-    `).join('') || `<div class="card">No notes uploaded yet for ${currentBatch}.</div>`;
-  }
-
-  // --- 4. BATCH-SPECIFIC PROCTORED EXAM ---
-  window.publishExam = async () => {
-    const title = document.getElementById('examTitle').value.trim();
-    const mins = parseInt(document.getElementById('examMins').value, 10) || 15;
-    const raw = document.getElementById('examJson').value.trim();
-    if (!title || !raw) return alert("Enter exam title and questions!");
-
-    const questions = raw.split('\n').map(line => {
-      const parts = line.split('|').map(p => p.trim());
-      return {
-        q: parts[0]?.replace(/^Q:\s*/i, ''),
-        A: parts[1]?.replace(/^A:\s*/i, ''),
-        B: parts[2]?.replace(/^B:\s*/i, ''),
-        C: parts[3]?.replace(/^C:\s*/i, ''),
-        ans: parts[4]?.replace(/^ANS:\s*/i, '').toUpperCase()
-      };
-    }).filter(item => item.q && item.ans);
-
-    await setDoc(doc(db, "exams", currentBatch), { batch: currentBatch, title, mins, questions, active: true });
-    alert(`Exam is now LIVE ONLY for ${currentBatch}!`);
-  };
-
-  window.closeExam = async () => {
-    if (!confirm(`Close the active exam for ${currentBatch}?`)) return;
-    await setDoc(doc(db, "exams", currentBatch), { active: false }, { merge: true });
-    alert(`Exam closed for ${currentBatch}.`);
-  };
-
-  onSnapshot(collection(db, "exams"), (snap) => {
-    allExams = {};
-    snap.docs.forEach(d => { allExams[d.id] = d.data(); });
-    renderExamLobby();
-  });
-
-  function renderExamLobby() {
-    const activeExam = allExams[currentBatch];
-    const lobby = document.getElementById('activeExamInfo');
-    if (activeExam && activeExam.active) {
-      lobby.innerHTML = `
-        <h4>Live Exam for ${currentBatch}: ${activeExam.title} (${activeExam.mins} mins | ${activeExam.questions.length} Questions)</h4>
-        <input type="text" id="examStuReg" placeholder="Enter Your Roll Number" />
-        <input type="text" id="examStuName" placeholder="Enter Your Full Name" />
-        <button type="button" class="btn" onclick="startProctoredExam()">🔒 Enter Full-Screen & Start Exam</button>
-      `;
-    } else {
-      lobby.innerHTML = `<p>No active exam right now for <strong>${currentBatch}</strong>.</p>`;
-    }
-  }
-
-  let examActiveFlag = false;
-  let violations = 0;
-  let examInterval = null;
-  let candidate = {};
-  let runningExam = null;
-
-  window.startProctoredExam = async () => {
-    runningExam = allExams[currentBatch];
-    if (!runningExam || !runningExam.active) return alert("No active exam for this batch.");
-
-    const reg = document.getElementById('examStuReg').value.trim().toUpperCase();
-    const name = document.getElementById('examStuName').value.trim();
-    if (!reg || !name) return alert("Enter your Roll Number and Name first!");
-
-    candidate = { batch: currentBatch, reg, name };
-    violations = 0;
-    examActiveFlag = true;
-
-    try { await document.documentElement.requestFullscreen(); } catch (e) {}
-
-    document.getElementById('liveExamHeading').textContent = `${runningExam.title} (${currentBatch})`;
-    document.getElementById('warningBanner').style.display = 'none';
-    document.getElementById('questionsContainer').innerHTML = runningExam.questions.map((item, idx) => `
-      <div style="background:#1e293b; padding:16px; border-radius:10px; margin-bottom:14px;">
-        <p style="font-weight:700; margin-top:0;">${idx + 1}. ${item.q}</p>
-        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="A" style="width:auto; margin-right:8px;"> ${item.A}</label>
-        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="B" style="width:auto; margin-right:8px;"> ${item.B}</label>
-        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="C" style="width:auto; margin-right:8px;"> ${item.C}</label>
-      </div>
-    `).join('');
-
-    document.getElementById('examOverlay').style.display = 'block';
-
-    let seconds = runningExam.mins * 60;
-    examInterval = setInterval(() => {
-      seconds--;
-      const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-      const s = String(seconds % 60).padStart(2, '0');
-      document.getElementById('examTimer').textContent = `${m}:${s}`;
-      if (seconds <= 0) submitExam("Time expired");
-    }, 1000);
-  };
-
-  document.addEventListener("visibilitychange", () => {
-    if (examActiveFlag && document.hidden) triggerViolation("Switched app or browser tab");
-  });
-  window.addEventListener("blur", () => {
-    if (examActiveFlag) triggerViolation("Window lost focus / overlay opened");
-  });
-  document.addEventListener("fullscreenchange", () => {
-    if (examActiveFlag && !document.fullscreenElement) triggerViolation("Exited full-screen mode");
-  });
-
-  function triggerViolation(reason) {
-    violations++;
-    const banner = document.getElementById('warningBanner');
-    banner.style.display = 'block';
-    banner.textContent = `⚠️ SECURITY WARNING (${violations}/2): ${reason}! Next violation will auto-submit your exam.`;
-    if (violations >= 2) {
-      submitExam(`Auto-submitted due to security violation (${reason})`);
-    }
-  }
-
-  window.submitExam = async (statusNote) => {
-    if (!examActiveFlag) return;
-    examActiveFlag = false;
-    clearInterval(examInterval);
-    if (document.fullscreenElement) {
-      try { await document.exitFullscreen(); } catch (e) {}
-    }
-
-    let score = 0;
-    runningExam.questions.forEach((item, idx) => {
-      const chosen = document.querySelector(`input[name="q${idx}"]:checked`);
-      if (chosen && chosen.value === item.ans) score++;
-    });
-
-    await addDoc(collection(db, "submissions"), {
-      batch: candidate.batch,
-      exam: runningExam.title,
-      reg: candidate.reg,
-      name: candidate.name,
-      score: `${score}/${runningExam.questions.length}`,
-      status: statusNote,
-      violations,
-      submittedAt: new Date().toLocaleString()
-    });
-
-    document.getElementById('examOverlay').style.display = 'none';
-    alert(`Exam Submitted!\nScore: ${score}/${runningExam.questions.length}\nStatus: ${statusNote}`);
-  };
-
-  onSnapshot(collection(db, "submissions"), (snap) => {
-    allSubmissions = snap.docs.map(d => d.data());
-    renderSubmissions();
-  });
-
-  function renderSubmissions() {
-    if (!isAdmin) return;
-    const filtered = allSubmissions.filter(s => (s.batch || 'Batch 1') === currentBatch);
-    document.getElementById('submissionsList').innerHTML = filtered.map(s => `
-      <div style="padding:8px 0; border-bottom:1px solid #e2e8f0;">
-        <strong>${s.reg} - ${s.name}</strong> (${s.exam}) | Score: <strong>${s.score}</strong> |
-        <span style="color:${s.violations > 0 ? 'red' : 'green'};">${s.status}</span> (${s.submittedAt})
-      </div>
-    `).join('') || `No submissions yet for ${currentBatch}.`;
-  }
-</script>
-</body>
-</html>
+        <p style="margin
