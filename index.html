@@ -174,7 +174,7 @@
       <button type="button" class="btn" id="signInBtn" onclick="adminLogin()">Sign In</button>
       <button type="button" class="btn btn-sm" style="background:#64748b;" onclick="resetAdminPassword()">Reset Password</button>
     </div>
-    <p id="loginError" style="color:#dc2626; font-size:0.84rem; margin:8px 0 0; line-height:1.4; font-weight:600;"></p>
+    <p id="loginError" style="color:#1e3a8a; font-size:0.84rem; margin:8px 0 0; line-height:1.4; font-weight:600;"></p>
   </div>
 
   <!-- NAVIGATION TABS -->
@@ -415,7 +415,7 @@
   </div>
 </div>
 
-<!-- STANDARD UI + FALLBACK HANDLERS -->
+<!-- STANDARD UI SCRIPT -->
 <script>
   let batchLabels = {
     batch1: 'Batch 1', batch2: 'Batch 2', batch3: 'Batch 3',
@@ -476,21 +476,53 @@
     reader.readAsText(file);
   }
 
-  // Fallback login handler before Firebase module finishes loading
+  let pendingLogin = false;
   window.adminLogin = function() {
+    pendingLogin = true;
     const errEl = document.getElementById('loginError');
-    errEl.style.color = '#dc2626';
-    errEl.textContent = '⚠️ Firebase connection is still loading or blocked by an ad-blocker/network. Check internet or try Incognito mode.';
+    errEl.style.color = '#1e3a8a';
+    errEl.textContent = 'Connecting to cloud server... please wait 3 seconds.';
   };
 </script>
 
-<!-- FIREBASE CLOUD SCRIPT -->
+<!-- DUAL-CDN FIREBASE LOADER (WORKS EVEN IF GSTATIC IS BLOCKED) -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  async function loadFirebaseModules() {
+    const cdns = [
+      {
+        app: "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
+        auth: "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
+        fs: "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
+      },
+      {
+        app: "https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app.js",
+        auth: "https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-auth.js",
+        fs: "https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore.js"
+      }
+    ];
+    let lastErr = null;
+    for (const cdn of cdns) {
+      try {
+        const [appMod, authMod, fsMod] = await Promise.all([
+          import(cdn.app),
+          import(cdn.auth),
+          import(cdn.fs)
+        ]);
+        return { ...appMod, ...authMod, ...fsMod };
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("Both Firebase CDNs unreachable.");
+  }
 
   try {
+    const {
+      initializeApp,
+      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail,
+      getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch
+    } = await loadFirebaseModules();
+
     const firebaseConfig = {
       apiKey: "AIzaSyBVGHkagJ2Ap34oeWhAPKd9r26CnaZXzRU",
       authDomain: "class-portal-7816f.firebaseapp.com",
@@ -520,7 +552,6 @@
       return legacyMap[itemBatch] === currentBatch;
     }
 
-    // Bind Sign-In immediately
     window.adminLogin = async () => {
       const email = document.getElementById('adminEmail').value.trim().toLowerCase();
       const pass = document.getElementById('adminPass').value;
@@ -547,6 +578,12 @@
         }
       }
     };
+
+    // If user clicked Sign In while SDK was finishing download, run it now
+    if (pendingLogin) {
+      pendingLogin = false;
+      window.adminLogin();
+    }
 
     window.resetAdminPassword = async () => {
       const email = document.getElementById('adminEmail').value.trim().toLowerCase();
@@ -598,7 +635,7 @@
         batchLabels = { ...batchLabels, ...snap.data() };
         refreshBatchDropdown();
       }
-    }, (err) => console.warn("Config read:", err.message));
+    });
 
     window.saveBatchNames = async () => {
       const updated = {};
@@ -1112,3 +1149,12 @@
     let examActiveFlag = false, violations = 0, examInterval = null, candidate = {}, runningExam = null;
 
     window.startProctoredExam = async () => {
+      runningExam = allExams[currentBatch];
+      const reg = document.getElementById('examStuReg').value.trim().toUpperCase();
+      const name = document.getElementById('examStuName').value.trim();
+      if (!reg || !name) return alert("Enter Roll Number and Name!");
+
+      candidate = { batch: currentBatch, reg, name };
+      violations = 0;
+      examActiveFlag = true;
+      try { await document.documentElement.requestFullscreen();
