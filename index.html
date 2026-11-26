@@ -169,12 +169,12 @@
   <div id="loginBox" class="card" style="display:none; max-width:420px; margin:0 auto 20px; border:2px solid #2563eb;">
     <h3 style="margin-top:0;">🔐 Faculty Admin Login</h3>
     <input type="email" id="adminEmail" placeholder="Lecturer Email" />
-    <input type="password" id="adminPass" placeholder="Password" />
+    <input type="password" id="adminPass" placeholder="Password" onkeyup="if(event.key==='Enter') adminLogin()" />
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button type="button" class="btn" onclick="adminLogin()">Sign In</button>
+      <button type="button" class="btn" id="signInBtn" onclick="adminLogin()">Sign In</button>
       <button type="button" class="btn btn-sm" style="background:#64748b;" onclick="resetAdminPassword()">Reset Password</button>
     </div>
-    <p id="loginError" style="color:#dc2626; font-size:0.84rem; margin:8px 0 0; line-height:1.4;"></p>
+    <p id="loginError" style="color:#dc2626; font-size:0.84rem; margin:8px 0 0; line-height:1.4; font-weight:600;"></p>
   </div>
 
   <!-- NAVIGATION TABS -->
@@ -186,11 +186,8 @@
     <button type="button" onclick="showTab('exam', this)">📝 Online Exam</button>
   </div>
 
-  <!-- =========================================================
-       TAB 1: MARKS (SEPARATE ASSIGNMENT & TEST TOTALS/AVGS)
-       ========================================================= -->
+  <!-- TAB 1: MARKS -->
   <div id="marks" class="section active">
-    <!-- STUDENT PRIVATE VIEW -->
     <div class="card student-only" style="border-left:4px solid var(--primary);">
       <h3 style="margin-top:0;">🔍 View Your Marks & Monthly Attendance — <span class="currentBatchLabel">Batch 1</span></h3>
       <p style="font-size:0.86rem; color:var(--muted); margin-top:0;">
@@ -203,7 +200,6 @@
       <div id="studentPrivateResult" style="margin-top:16px;"></div>
     </div>
 
-    <!-- LECTURER: BULK UPLOAD -->
     <div class="card admin-only" style="border-left-color: var(--success);">
       <h3 style="margin-top:0;">📋 Bulk Add Students (<span class="currentBatchLabel">Batch 1</span>)</h3>
       <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
@@ -215,7 +211,6 @@
       <span id="bulkStatus" style="margin-left:10px; font-weight:700; color:var(--success);"></span>
     </div>
 
-    <!-- LECTURER: ADD SINGLE STUDENT -->
     <div class="card admin-only">
       <h3 style="margin-top:0;">➕ Add Single Student (<span class="currentBatchLabel">Batch 1</span>)</h3>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -225,7 +220,6 @@
       </div>
     </div>
 
-    <!-- LECTURER: SPREADSHEET MARKS TABLE -->
     <div class="card admin-only">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div>
@@ -266,9 +260,7 @@
     </div>
   </div>
 
-  <!-- =========================================================
-       TAB 2: DAILY & MONTHLY ATTENDANCE
-       ========================================================= -->
+  <!-- TAB 2: ATTENDANCE -->
   <div id="attendance" class="section">
     <div class="card student-only">
       <h3 style="margin-top:0;">🗓️ Check Your Monthly & Daily Attendance — <span class="currentBatchLabel">Batch 1</span></h3>
@@ -277,7 +269,6 @@
       </p>
     </div>
 
-    <!-- LECTURER: DAILY ATTENDANCE -->
     <div class="card admin-only">
       <h3 style="margin-top:0;">🗓️ Mark Daily Attendance — <span class="currentBatchLabel">Batch 1</span></h3>
       <div class="grid-2" style="align-items:end;">
@@ -306,7 +297,6 @@
       <span id="attSaveMsg" style="margin-left:10px; font-weight:700; color:var(--success);"></span>
     </div>
 
-    <!-- LECTURER: MONTHLY ATTENDANCE TOTALS -->
     <div class="card admin-only">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div>
@@ -337,9 +327,7 @@
     </div>
   </div>
 
-  <!-- =========================================================
-       TAB 3: HOMEWORK / ASSIGNMENT WORK UPLOAD PORTAL
-       ========================================================= -->
+  <!-- TAB 3: HOMEWORK / ASSIGNMENT UPLOAD -->
   <div id="submissionsTab" class="section">
     <div class="card admin-only">
       <h3 style="margin-top:0;">📌 Post Assignment / Homework Task (<span class="currentBatchLabel">Batch 1</span>)</h3>
@@ -375,9 +363,7 @@
     </div>
   </div>
 
-  <!-- =========================================================
-       TAB 4: LECTURE NOTES & IMPORTANT DATES
-       ========================================================= -->
+  <!-- TAB 4: NOTES & DATES -->
   <div id="notes" class="section">
     <div class="card admin-only">
       <h3 style="margin-top:0;">📤 Share Lecture Notes / Important Date (<span class="currentBatchLabel">Batch 1</span>)</h3>
@@ -390,9 +376,7 @@
     <div id="notesList"></div>
   </div>
 
-  <!-- =========================================================
-       TAB 5: PROCTORED ONLINE EXAM
-       ========================================================= -->
+  <!-- TAB 5: ONLINE EXAM -->
   <div id="exam" class="section">
     <div class="card admin-only">
       <h3 style="margin-top:0;">🛠️ Create Proctored Exam — Only for <span class="currentBatchLabel">Batch 1</span></h3>
@@ -431,7 +415,7 @@
   </div>
 </div>
 
-<!-- STANDARD UI SCRIPT -->
+<!-- STANDARD UI + FALLBACK HANDLERS -->
 <script>
   let batchLabels = {
     batch1: 'Batch 1', batch2: 'Batch 2', batch3: 'Batch 3',
@@ -444,9 +428,7 @@
   document.getElementById('attDate').value = todayStr;
   document.getElementById('attMonthFilter').value = todayStr.slice(0, 7);
 
-  function getBatchName(key) {
-    return batchLabels[key] || key;
-  }
+  function getBatchName(key) { return batchLabels[key] || key; }
 
   function refreshBatchDropdown() {
     const sel = document.getElementById('activeBatchSelect');
@@ -466,9 +448,7 @@
     const box = document.getElementById('renameBatchBox');
     const isHidden = (box.style.display === 'none' || box.style.display === '');
     if (isHidden) {
-      Object.keys(batchLabels).forEach(k => {
-        document.getElementById('bn_' + k).value = batchLabels[k];
-      });
+      Object.keys(batchLabels).forEach(k => { document.getElementById('bn_' + k).value = batchLabels[k]; });
     }
     box.style.display = isHidden ? 'block' : 'none';
   }
@@ -495,6 +475,13 @@
     reader.onload = (e) => { document.getElementById('bulkStudentsInput').value = e.target.result; };
     reader.readAsText(file);
   }
+
+  // Fallback login handler before Firebase module finishes loading
+  window.adminLogin = function() {
+    const errEl = document.getElementById('loginError');
+    errEl.style.color = '#dc2626';
+    errEl.textContent = '⚠️ Firebase connection is still loading or blocked by an ad-blocker/network. Check internet or try Incognito mode.';
+  };
 </script>
 
 <!-- FIREBASE CLOUD SCRIPT -->
@@ -503,120 +490,625 @@
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBVGHkagJ2Ap34oeWhAPKd9r26CnaZXzRU",
-    authDomain: "class-portal-7816f.firebaseapp.com",
-    projectId: "class-portal-7816f",
-    storageBucket: "class-portal-7816f.firebasestorage.app",
-    messagingSenderId: "265892681101",
-    appId: "1:265892681101:web:39e8d51bf3dee115f759c4"
-  };
+  try {
+    const firebaseConfig = {
+      apiKey: "AIzaSyBVGHkagJ2Ap34oeWhAPKd9r26CnaZXzRU",
+      authDomain: "class-portal-7816f.firebaseapp.com",
+      projectId: "class-portal-7816f",
+      storageBucket: "class-portal-7816f.firebasestorage.app",
+      messagingSenderId: "265892681101",
+      appId: "1:265892681101:web:39e8d51bf3dee115f759c4"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-  let isAdmin = false;
-  let allStudents = [];
-  let allAttendance = [];
-  let allHwTasks = [];
-  let allStudentWorks = [];
-  let allNotes = [];
-  let allExams = {};
-  let allSubmissions = [];
-  let draftAttMap = {};
+    let isAdmin = false;
+    let allStudents = [];
+    let allAttendance = [];
+    let allHwTasks = [];
+    let allStudentWorks = [];
+    let allNotes = [];
+    let allExams = {};
+    let allSubmissions = [];
+    let draftAttMap = {};
 
-  function matchesBatch(itemBatch) {
-    if (itemBatch === currentBatch) return true;
-    const legacyMap = { 'Batch 1': 'batch1', 'Batch 2': 'batch2', 'Batch 3': 'batch3', 'Batch 4': 'batch4', 'Batch 5': 'batch5', 'Batch 6': 'batch6' };
-    return legacyMap[itemBatch] === currentBatch;
-  }
-
-  window.renderAll = () => {
-    renderAdminMarksTable();
-    renderDailyAttendanceSheet();
-    renderMonthlyAttendance();
-    renderHomeworkSection();
-    renderNotes();
-    renderExamLobby();
-    renderSubmissions();
-  };
-
-  // --- LIVE BATCH NAMES SYNC ---
-  onSnapshot(doc(db, "config", "batches"), (snap) => {
-    if (snap.exists()) {
-      batchLabels = { ...batchLabels, ...snap.data() };
-      refreshBatchDropdown();
+    function matchesBatch(itemBatch) {
+      if (itemBatch === currentBatch) return true;
+      const legacyMap = { 'Batch 1': 'batch1', 'Batch 2': 'batch2', 'Batch 3': 'batch3', 'Batch 4': 'batch4', 'Batch 5': 'batch5', 'Batch 6': 'batch6' };
+      return legacyMap[itemBatch] === currentBatch;
     }
-  });
 
-  window.saveBatchNames = async () => {
-    const updated = {};
-    Object.keys(batchLabels).forEach(k => {
-      const val = document.getElementById('bn_' + k).value.trim();
-      updated[k] = val || batchLabels[k];
+    // Bind Sign-In immediately
+    window.adminLogin = async () => {
+      const email = document.getElementById('adminEmail').value.trim().toLowerCase();
+      const pass = document.getElementById('adminPass').value;
+      const errEl = document.getElementById('loginError');
+      if (!email || !pass) {
+        errEl.style.color = "#dc2626";
+        errEl.textContent = "Enter both email and password.";
+        return;
+      }
+      errEl.style.color = "#1e3a8a";
+      errEl.textContent = "Signing in...";
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        errEl.textContent = "";
+        document.getElementById('loginBox').style.display = 'none';
+      } catch (err) {
+        errEl.style.color = "#dc2626";
+        if (err.code === 'auth/unauthorized-domain') {
+          errEl.innerHTML = "Domain blocked: Open Firebase > Authentication > Settings > Authorized domains and add <b>amosjacob02-oss.github.io</b>";
+        } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+          errEl.textContent = "Wrong email or password. Click 'Reset Password' or check Firebase Authentication > Users.";
+        } else {
+          errEl.textContent = "Login failed: " + err.message;
+        }
+      }
+    };
+
+    window.resetAdminPassword = async () => {
+      const email = document.getElementById('adminEmail').value.trim().toLowerCase();
+      const errEl = document.getElementById('loginError');
+      if (!email) {
+        errEl.style.color = "#dc2626";
+        errEl.textContent = "Type your lecturer email above first, then click Reset Password.";
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        errEl.style.color = "#16a34a";
+        errEl.textContent = "✅ Password reset email sent! Check your inbox/spam.";
+      } catch (e) {
+        errEl.style.color = "#dc2626";
+        errEl.textContent = e.message;
+      }
+    };
+
+    window.adminLogout = () => signOut(auth);
+
+    window.renderAll = () => {
+      renderAdminMarksTable();
+      renderDailyAttendanceSheet();
+      renderMonthlyAttendance();
+      renderHomeworkSection();
+      renderNotes();
+      renderExamLobby();
+      renderSubmissions();
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      isAdmin = !!user;
+      document.getElementById('authStatus').textContent = isAdmin ? `Lecturer (${user.email})` : "Student View";
+      document.getElementById('loginToggleBtn').style.display = isAdmin ? 'none' : 'inline-block';
+      document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
+      document.querySelectorAll('.admin-only').forEach(el => {
+        if (el.id === 'renameBatchBox') return;
+        el.style.display = isAdmin ? (el.tagName === 'TH' || el.tagName === 'TD' ? 'table-cell' : (el.tagName === 'BUTTON' ? 'inline-block' : 'block')) : 'none';
+      });
+      document.querySelectorAll('.student-only').forEach(el => {
+        el.style.display = isAdmin ? 'none' : 'block';
+      });
+      window.renderAll();
     });
-    await setDoc(doc(db, "config", "batches"), updated);
-    document.getElementById('renameBatchBox').style.display = 'none';
-    alert("Batch names updated!");
-  };
 
-  // --- AUTHENTICATION ---
-  window.adminLogin = async () => {
-    const email = document.getElementById('adminEmail').value.trim();
-    const pass = document.getElementById('adminPass').value;
-    const errEl = document.getElementById('loginError');
-    if (!email || !pass) { errEl.textContent = "Enter both email and password."; return; }
-    errEl.style.color = "#1e3a8a";
-    errEl.textContent = "Signing in...";
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      errEl.textContent = "";
-      document.getElementById('loginBox').style.display = 'none';
-    } catch (err) {
-      errEl.style.color = "#dc2626";
-      if (err.code === 'auth/unauthorized-domain') {
-        errEl.innerHTML = "Domain blocked by Firebase. Go to Firebase > Authentication > Settings > Authorized domains and add <b>amosjacob02-oss.github.io</b>";
-      } else {
-        errEl.textContent = "Login failed: " + err.message;
+    onSnapshot(doc(db, "config", "batches"), (snap) => {
+      if (snap.exists()) {
+        batchLabels = { ...batchLabels, ...snap.data() };
+        refreshBatchDropdown();
+      }
+    }, (err) => console.warn("Config read:", err.message));
+
+    window.saveBatchNames = async () => {
+      const updated = {};
+      Object.keys(batchLabels).forEach(k => {
+        const val = document.getElementById('bn_' + k).value.trim();
+        updated[k] = val || batchLabels[k];
+      });
+      await setDoc(doc(db, "config", "batches"), updated);
+      document.getElementById('renameBatchBox').style.display = 'none';
+      alert("Batch names updated!");
+    };
+
+    function computeSeparateStats(a1, a2, t1, t2) {
+      const hasA1 = a1 !== '' && a1 !== undefined && !isNaN(parseFloat(a1));
+      const hasA2 = a2 !== '' && a2 !== undefined && !isNaN(parseFloat(a2));
+      const hasT1 = t1 !== '' && t1 !== undefined && !isNaN(parseFloat(t1));
+      const hasT2 = t2 !== '' && t2 !== undefined && !isNaN(parseFloat(t2));
+
+      let assignTotal = "Pending", assignAvg5 = "Pending";
+      if (hasA1 && hasA2) {
+        const sumA = parseFloat(a1) + parseFloat(a2);
+        assignTotal = `${sumA} / 20`;
+        assignAvg5 = `${((sumA / 20) * 5).toFixed(2)} / 5`;
+      } else if (hasA1 || hasA2) {
+        const partialA = (hasA1 ? parseFloat(a1) : 0) + (hasA2 ? parseFloat(a2) : 0);
+        assignTotal = `${partialA} / 20 (1 left)`;
+      }
+
+      let testTotal = "Pending", testAvg5 = "Pending";
+      if (hasT1 && hasT2) {
+        const sumT = parseFloat(t1) + parseFloat(t2);
+        testTotal = `${sumT} / 50`;
+        testAvg5 = `${((sumT / 50) * 5).toFixed(2)} / 5`;
+      } else if (hasT1 || hasT2) {
+        const partialT = (hasT1 ? parseFloat(t1) : 0) + (hasT2 ? parseFloat(t2) : 0);
+        testTotal = `${partialT} / 50 (1 left)`;
+      }
+
+      return { assignTotal, assignAvg5, testTotal, testAvg5, assignReady: hasA1 && hasA2, testReady: hasT1 && hasT2 };
+    }
+
+    window.recalcRowStats = (docId) => {
+      const a1 = document.getElementById(`a1_${docId}`).value;
+      const a2 = document.getElementById(`a2_${docId}`).value;
+      const t1 = document.getElementById(`t1_${docId}`).value;
+      const t2 = document.getElementById(`t2_${docId}`).value;
+      const st = computeSeparateStats(a1, a2, t1, t2);
+
+      document.getElementById(`atot_${docId}`).textContent = st.assignTotal;
+      const aBadge = document.getElementById(`aavg_${docId}`);
+      aBadge.textContent = st.assignAvg5;
+      aBadge.className = `badge ${st.assignReady ? 'badge-green' : 'badge-blue'}`;
+
+      document.getElementById(`ttot_${docId}`).textContent = st.testTotal;
+      const tBadge = document.getElementById(`tavg_${docId}`);
+      tBadge.textContent = st.testAvg5;
+      tBadge.className = `badge ${st.testReady ? 'badge-purple' : 'badge-blue'}`;
+    };
+
+    window.bulkSaveStudents = async () => {
+      const raw = document.getElementById('bulkStudentsInput').value.trim();
+      const statusEl = document.getElementById('bulkStatus');
+      if (!raw) return alert("Choose a CSV file or paste your student list first!");
+
+      const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      const batchWrite = writeBatch(db);
+      const slotNum = currentBatch.replace(/\D/g, '') || '1';
+      let count = 0;
+
+      lines.forEach((line, index) => {
+        const parts = line.includes('\t')
+          ? line.split('\t').map(p => p.trim().replace(/^"|"$/g, ''))
+          : line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+
+        const firstLower = (parts[0] || '').toLowerCase();
+        if (index === 0 && (firstLower.includes('roll') || firstLower.includes('reg') || firstLower === 'name')) return;
+
+        count++;
+        let reg = parts.length === 1 ? `B${slotNum}-${String(count).padStart(2, '0')}` : (parts[0] || `B${slotNum}-${String(count).padStart(2, '0')}`).toUpperCase();
+        let name = parts.length === 1 ? parts[0] : (parts[1] || '');
+
+        if (name) {
+          const docId = `${currentBatch}_${reg.replace(/[^A-Z0-9_-]/g, '')}`;
+          batchWrite.set(doc(db, "students", docId), {
+            docId, batch: currentBatch, reg, name,
+            a1: '', a2: '', t1: '', t2: '', q1: ''
+          }, { merge: true });
+        }
+      });
+
+      statusEl.textContent = `Saving ${count} students...`;
+      await batchWrite.commit();
+      document.getElementById('bulkStudentsInput').value = "";
+      document.getElementById('csvFileInput').value = "";
+      statusEl.textContent = `✅ Added ${count} students!`;
+      setTimeout(() => statusEl.textContent = "", 4000);
+    };
+
+    window.addSingleStudent = async () => {
+      const reg = document.getElementById('newStuReg').value.trim().toUpperCase();
+      const name = document.getElementById('newStuName').value.trim();
+      if (!reg || !name) return alert("Enter Roll Number and Name!");
+      const docId = `${currentBatch}_${reg.replace(/[^A-Z0-9_-]/g, '')}`;
+      await setDoc(doc(db, "students", docId), {
+        docId, batch: currentBatch, reg, name, a1: '', a2: '', t1: '', t2: '', q1: ''
+      }, { merge: true });
+      document.getElementById('newStuReg').value = "";
+      document.getElementById('newStuName').value = "";
+    };
+
+    window.saveAllSpreadsheetMarks = async () => {
+      const batchStudents = allStudents.filter(s => matchesBatch(s.batch));
+      if (batchStudents.length === 0) return;
+      const msg = document.getElementById('marksSaveMsg');
+      msg.textContent = "Saving...";
+      const batchWrite = writeBatch(db);
+
+      batchStudents.forEach(s => {
+        const a1El = document.getElementById(`a1_${s.docId}`);
+        if (!a1El) return;
+        batchWrite.set(doc(db, "students", s.docId), {
+          a1: a1El.value,
+          a2: document.getElementById(`a2_${s.docId}`).value,
+          t1: document.getElementById(`t1_${s.docId}`).value,
+          t2: document.getElementById(`t2_${s.docId}`).value,
+          q1: document.getElementById(`q1_${s.docId}`).value
+        }, { merge: true });
+      });
+
+      await batchWrite.commit();
+      msg.textContent = "✅ All marks saved!";
+      setTimeout(() => msg.textContent = "", 3500);
+    };
+
+    window.deleteStudent = async (docId) => {
+      if (confirm("Delete this student?")) await deleteDoc(doc(db, "students", docId));
+    };
+
+    onSnapshot(collection(db, "students"), (snap) => {
+      allStudents = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+      renderAdminMarksTable();
+      renderDailyAttendanceSheet();
+      renderMonthlyAttendance();
+    });
+
+    window.renderAdminMarksTable = () => {
+      const filter = document.getElementById('searchReg').value.toLowerCase();
+      const batchStudents = allStudents
+        .filter(s => matchesBatch(s.batch))
+        .filter(s => s.reg.toLowerCase().includes(filter) || s.name.toLowerCase().includes(filter))
+        .sort((a, b) => a.reg.localeCompare(b.reg));
+
+      document.getElementById('adminMarksBody').innerHTML = batchStudents.map(s => {
+        const st = computeSeparateStats(s.a1, s.a2, s.t1, s.t2);
+        return `<tr>
+          <td><strong>${s.reg}</strong></td>
+          <td>${s.name}</td>
+          <td><input type="number" step="0.5" max="10" class="mark-cell" id="a1_${s.docId}" value="${s.a1 ?? ''}" oninput="recalcRowStats('${s.docId}')" /></td>
+          <td><input type="number" step="0.5" max="10" class="mark-cell" id="a2_${s.docId}" value="${s.a2 ?? ''}" oninput="recalcRowStats('${s.docId}')" /></td>
+          <td id="atot_${s.docId}" style="font-weight:700;">${st.assignTotal}</td>
+          <td><span id="aavg_${s.docId}" class="badge ${st.assignReady ? 'badge-green' : 'badge-blue'}">${st.assignAvg5}</span></td>
+          <td><input type="number" step="0.5" max="30" class="mark-cell" id="t1_${s.docId}" value="${s.t1 ?? ''}" oninput="recalcRowStats('${s.docId}')" /></td>
+          <td><input type="number" step="0.5" max="20" class="mark-cell" id="t2_${s.docId}" value="${s.t2 ?? ''}" oninput="recalcRowStats('${s.docId}')" /></td>
+          <td id="ttot_${s.docId}" style="font-weight:700;">${st.testTotal}</td>
+          <td><span id="tavg_${s.docId}" class="badge ${st.testReady ? 'badge-purple' : 'badge-blue'}">${st.testAvg5}</span></td>
+          <td><input type="number" step="0.5" max="30" class="mark-cell" id="q1_${s.docId}" value="${s.q1 ?? ''}" /></td>
+          <td><button type="button" class="btn btn-danger btn-sm" onclick="deleteStudent('${s.docId}')">X</button></td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="12">No students added to ${getBatchName(currentBatch)} yet.</td></tr>`;
+    };
+
+    window.lookupMyRecord = () => {
+      const rollInput = document.getElementById('studentLookupRoll').value.trim().toUpperCase();
+      const out = document.getElementById('studentPrivateResult');
+      if (!rollInput) { out.innerHTML = `<p style="color:#dc2626;">Please enter your Roll Number.</p>`; return; }
+
+      const stu = allStudents.find(s => matchesBatch(s.batch) && s.reg.toUpperCase() === rollInput);
+      if (!stu) {
+        out.innerHTML = `<p style="color:#dc2626;">No record found for Roll No. <strong>${rollInput}</strong> in <strong>${getBatchName(currentBatch)}</strong>.</p>`;
+        return;
+      }
+
+      const st = computeSeparateStats(stu.a1, stu.a2, stu.t1, stu.t2);
+
+      const sessions = allAttendance
+        .filter(a => matchesBatch(a.batch))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const monthMap = {};
+      sessions.forEach(sess => {
+        const status = sess.records ? sess.records[stu.reg] : null;
+        if (status === 'P' || status === 'A') {
+          const ym = sess.date.slice(0, 7);
+          if (!monthMap[ym]) monthMap[ym] = { held: 0, present: 0, absent: 0, logs: [] };
+          monthMap[ym].held++;
+          if (status === 'P') monthMap[ym].present++; else monthMap[ym].absent++;
+          monthMap[ym].logs.push(`<span class="badge ${status === 'P' ? 'badge-green' : 'badge-red'}" style="margin:2px;">${sess.date.slice(8,10)}: ${status}</span>`);
+        }
+      });
+
+      const monthKeys = Object.keys(monthMap).sort().reverse();
+      const monthlyHtml = monthKeys.length > 0 ? `
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Classes Held</th>
+              <th>Present</th>
+              <th>Absent</th>
+              <th>Monthly %</th>
+              <th>Daily Dates</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${monthKeys.map(ym => {
+              const m = monthMap[ym];
+              const pct = Math.round((m.present / m.held) * 100);
+              return `<tr>
+                <td><strong>${ym}</strong></td>
+                <td>${m.held}</td>
+                <td>${m.present}</td>
+                <td>${m.absent}</td>
+                <td><span class="badge ${pct >= 75 ? 'badge-green' : 'badge-red'}">${pct}%</span></td>
+                <td>${m.logs.join('')}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      ` : `<p style="color:var(--muted); font-size:0.86rem; margin:6px 0 0;">No attendance sessions recorded yet.</p>`;
+
+      out.innerHTML = `
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:16px;">
+          <h4 style="margin:0 0 12px; color:var(--primary);">${stu.name} (${stu.reg}) — ${getBatchName(currentBatch)}</h4>
+          <div class="grid-2">
+            <div style="background:white; border:1px solid #bbf7d0; border-radius:10px; padding:12px;">
+              <div style="font-weight:700; color:#166534; margin-bottom:8px;">📝 Assignments</div>
+              <div class="grid-2">
+                <div class="stat-box"><div class="num">${stu.a1 !== '' && stu.a1 !== undefined ? stu.a1 : '-'} / 10</div><div class="lbl">Assignment 1</div></div>
+                <div class="stat-box"><div class="num">${stu.a2 !== '' && stu.a2 !== undefined ? stu.a2 : '-'} / 10</div><div class="lbl">Assignment 2</div></div>
+                <div class="stat-box"><div class="num">${st.assignTotal}</div><div class="lbl">Assignment Total</div></div>
+                <div class="stat-box" style="background:#dcfce7;"><div class="num" style="color:#166534;">${st.assignAvg5}</div><div class="lbl">Assignment Avg (in 5)</div></div>
+              </div>
+            </div>
+            <div style="background:white; border:1px solid #e9d5ff; border-radius:10px; padding:12px;">
+              <div style="font-weight:700; color:#6b21a8; margin-bottom:8px;">📄 Tests</div>
+              <div class="grid-2">
+                <div class="stat-box"><div class="num">${stu.t1 !== '' && stu.t1 !== undefined ? stu.t1 : '-'} / 30</div><div class="lbl">Test 1</div></div>
+                <div class="stat-box"><div class="num">${stu.t2 !== '' && stu.t2 !== undefined ? stu.t2 : '-'} / 20</div><div class="lbl">Test 2</div></div>
+                <div class="stat-box"><div class="num">${st.testTotal}</div><div class="lbl">Test Total</div></div>
+                <div class="stat-box" style="background:#f3e8ff;"><div class="num" style="color:#6b21a8;">${st.testAvg5}</div><div class="lbl">Test Avg (in 5)</div></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <div class="stat-box" style="max-width:220px;">
+              <div class="num">${stu.q1 !== '' && stu.q1 !== undefined ? stu.q1 : '-'} / 30</div>
+              <div class="lbl">Quiz 1</div>
+            </div>
+          </div>
+          <div style="margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0;">
+            <strong>🗓️ Monthly Attendance Totals:</strong>
+            <div style="overflow-x:auto;">${monthlyHtml}</div>
+          </div>
+        </div>
+      `;
+    };
+
+    onSnapshot(collection(db, "attendance"), (snap) => {
+      allAttendance = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderDailyAttendanceSheet();
+      renderMonthlyAttendance();
+    });
+
+    window.renderDailyAttendanceSheet = () => {
+      const dateVal = document.getElementById('attDate').value;
+      const batchStudents = allStudents
+        .filter(s => matchesBatch(s.batch))
+        .sort((a, b) => a.reg.localeCompare(b.reg));
+
+      const existingDoc = allAttendance.find(a => matchesBatch(a.batch) && a.date === dateVal);
+      draftAttMap = existingDoc ? { ...existingDoc.records } : {};
+
+      document.getElementById('dailyAttSheet').innerHTML = batchStudents.map(s => {
+        const st = draftAttMap[s.reg] || '';
+        return `<tr>
+          <td><strong>${s.reg}</strong></td>
+          <td>${s.name}</td>
+          <td>
+            <button type="button" class="att-btn att-p ${st === 'P' ? 'selected' : ''}" onclick="setStudentAtt('${s.reg}', 'P', this)">P (Present)</button>
+            <button type="button" class="att-btn att-a ${st === 'A' ? 'selected' : ''}" onclick="setStudentAtt('${s.reg}', 'A', this)">A (Absent)</button>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="3">Add students in the Marks tab first.</td></tr>`;
+    };
+
+    window.setStudentAtt = (reg, status, btn) => {
+      draftAttMap[reg] = status;
+      btn.parentElement.querySelectorAll('.att-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+
+    window.markAllAttendance = (status) => {
+      allStudents.filter(s => matchesBatch(s.batch)).forEach(s => { draftAttMap[s.reg] = status; });
+      renderDailyAttendanceSheet();
+    };
+
+    window.saveDailyAttendance = async () => {
+      const dateVal = document.getElementById('attDate').value;
+      if (!dateVal) return alert("Select a date!");
+      const docId = `${currentBatch}_${dateVal}`;
+      await setDoc(doc(db, "attendance", docId), {
+        batch: currentBatch, date: dateVal, records: draftAttMap
+      });
+      const msg = document.getElementById('attSaveMsg');
+      msg.textContent = `✅ Saved for ${dateVal}!`;
+      setTimeout(() => msg.textContent = "", 3500);
+    };
+
+    window.renderMonthlyAttendance = () => {
+      const monthVal = document.getElementById('attMonthFilter').value;
+      const batchStudents = allStudents
+        .filter(s => matchesBatch(s.batch))
+        .sort((a, b) => a.reg.localeCompare(b.reg));
+
+      const monthSessions = allAttendance
+        .filter(a => matchesBatch(a.batch) && (!monthVal || a.date.startsWith(monthVal)))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      document.getElementById('monthlyAttTable').innerHTML = batchStudents.map(s => {
+        let held = 0, present = 0, absent = 0;
+        const dailyBadges = [];
+
+        monthSessions.forEach(sess => {
+          const st = sess.records ? sess.records[s.reg] : null;
+          if (st === 'P' || st === 'A') {
+            held++;
+            if (st === 'P') present++; else absent++;
+            const label = monthVal ? sess.date.slice(8, 10) : sess.date.slice(5);
+            dailyBadges.push(`<span class="badge ${st === 'P' ? 'badge-green' : 'badge-red'}" style="margin:2px;">${label}:${st}</span>`);
+          }
+        });
+
+        const pct = held > 0 ? Math.round((present / held) * 100) : 0;
+        const pctBadge = held === 0 ? 'badge-blue' : (pct >= 75 ? 'badge-green' : 'badge-red');
+
+        return `<tr>
+          <td><strong>${s.reg}</strong></td>
+          <td>${s.name}</td>
+          <td>${held}</td>
+          <td>${present}</td>
+          <td>${absent}</td>
+          <td><span class="badge ${pctBadge}">${held > 0 ? pct + '%' : 'N/A'}</span></td>
+          <td>${dailyBadges.join('') || '<span style="color:var(--muted);">No classes logged</span>'}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="7">No students in ${getBatchName(currentBatch)}.</td></tr>`;
+    };
+
+    window.createHomeworkTask = async () => {
+      const title = document.getElementById('hwTitle').value.trim();
+      const dueDate = document.getElementById('hwDueDate').value;
+      const instructions = document.getElementById('hwInstructions').value.trim();
+      if (!title) return alert("Enter task title!");
+      await addDoc(collection(db, "hw_tasks"), {
+        batch: currentBatch, title, dueDate, instructions, created: Date.now()
+      });
+      document.getElementById('hwTitle').value = "";
+      document.getElementById('hwDueDate').value = "";
+      document.getElementById('hwInstructions').value = "";
+    };
+
+    window.deleteDocItem = async (col, id) => {
+      if (confirm("Delete item?")) await deleteDoc(doc(db, col, id));
+    };
+
+    onSnapshot(query(collection(db, "hw_tasks"), orderBy("created", "desc")), (snap) => {
+      allHwTasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderHomeworkSection();
+    });
+
+    onSnapshot(query(collection(db, "student_works"), orderBy("created", "desc")), (snap) => {
+      allStudentWorks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderHomeworkSection();
+    });
+
+    function renderHomeworkSection() {
+      const tasks = allHwTasks.filter(t => matchesBatch(t.batch));
+      document.getElementById('hwTasksList').innerHTML = tasks.map(t => `
+        <div style="padding:10px 0; border-bottom:1px solid #e2e8f0;">
+          ${t.dueDate ? `<span class="badge badge-red">Due: ${t.dueDate}</span>` : ''}
+          ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('hw_tasks','${t.id}')">Delete</button>` : ''}
+          <h4 style="margin:6px 0 4px;">${t.title}</h4>
+          <p style="margin:0; color:var(--muted); font-size:0.9rem;">${t.instructions}</p>
+        </div>
+      `).join('') || `<p style="color:var(--muted);">No specific tasks posted yet—students can still submit general work below.</p>`;
+
+      const sel = document.getElementById('subTaskSelect');
+      sel.innerHTML = tasks.map(t => `<option value="${t.title}">${t.title}</option>`).join('')
+        + `<option value="General Homework / Work">General Homework / Work</option>`;
+
+      if (isAdmin) {
+        const works = allStudentWorks.filter(w => matchesBatch(w.batch));
+        document.getElementById('receivedWorksList').innerHTML = works.map(w => `
+          <div style="padding:10px 0; border-bottom:1px solid #e2e8f0;">
+            <button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('student_works','${w.id}')">Delete</button>
+            <strong>${w.reg} — ${w.name}</strong> <span class="badge badge-blue">${w.task}</span>
+            <div style="font-size:0.82rem; color:var(--muted); margin:3px 0;">Submitted: ${w.submittedAt}</div>
+            ${w.text ? `<p style="background:#f8fafc; padding:8px; border-radius:6px; margin:6px 0; white-space:pre-wrap;">${w.text}</p>` : ''}
+            ${w.link ? `<a href="${w.link}" target="_blank" class="btn btn-sm" style="text-decoration:none; display:inline-block;">🔗 Open Student File / Link</a>` : ''}
+          </div>
+        `).join('') || `No student work submitted yet for ${getBatchName(currentBatch)}.`;
       }
     }
-  };
 
-  window.resetAdminPassword = async () => {
-    const email = document.getElementById('adminEmail').value.trim();
-    const errEl = document.getElementById('loginError');
-    if (!email) { errEl.textContent = "Type your lecturer email above first, then click Reset Password."; return; }
-    try {
-      await sendPasswordResetEmail(auth, email);
-      errEl.style.color = "#16a34a";
-      errEl.textContent = "✅ Password reset email sent! Check your inbox/spam.";
-    } catch (e) {
-      errEl.style.color = "#dc2626";
-      errEl.textContent = e.message;
+    window.submitStudentWork = async () => {
+      const reg = document.getElementById('subRoll').value.trim().toUpperCase();
+      const name = document.getElementById('subName').value.trim();
+      const task = document.getElementById('subTaskSelect').value;
+      const link = document.getElementById('subLink').value.trim();
+      const text = document.getElementById('subText').value.trim();
+
+      if (!reg || !name) return alert("Enter your Roll Number and Name!");
+      if (!link && !text) return alert("Paste your Google Drive/PDF link or type your answer!");
+
+      await addDoc(collection(db, "student_works"), {
+        batch: currentBatch, reg, name, task, link, text,
+        submittedAt: new Date().toLocaleString(), created: Date.now()
+      });
+
+      document.getElementById('subLink').value = "";
+      document.getElementById('subText').value = "";
+      const msg = document.getElementById('workSubMsg');
+      msg.textContent = "✅ Work submitted successfully!";
+      setTimeout(() => msg.textContent = "", 4000);
+    };
+
+    window.addNote = async () => {
+      const title = document.getElementById('noteTitle').value.trim();
+      const date = document.getElementById('noteDate').value;
+      const link = document.getElementById('noteLink').value.trim();
+      const summary = document.getElementById('noteSummary').value.trim();
+      if (!title) return alert("Enter title!");
+      await addDoc(collection(db, "notes"), { batch: currentBatch, title, date, link, summary, created: Date.now() });
+      ['noteTitle','noteDate','noteLink','noteSummary'].forEach(id => document.getElementById(id).value = "");
+    };
+
+    onSnapshot(query(collection(db, "notes"), orderBy("created", "desc")), (snap) => {
+      allNotes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderNotes();
+    });
+
+    function renderNotes() {
+      const filtered = allNotes.filter(n => matchesBatch(n.batch));
+      document.getElementById('notesList').innerHTML = filtered.map(n => `
+        <div class="card">
+          ${n.date ? `<span class="badge badge-blue">📅 ${n.date}</span>` : ''}
+          ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('notes','${n.id}')">Delete</button>` : ''}
+          <h4 style="margin:8px 0 6px;">${n.title}</h4>
+          <p style="white-space:pre-wrap; margin:0 0 10px;">${n.summary}</p>
+          ${n.link ? `<a href="${n.link}" target="_blank" class="btn btn-sm" style="text-decoration:none; display:inline-block;">📥 Open Resource</a>` : ''}
+        </div>
+      `).join('') || `<div class="card">No notes or announcements posted for ${getBatchName(currentBatch)}.</div>`;
     }
-  };
 
-  window.adminLogout = () => signOut(auth);
+    window.publishExam = async () => {
+      const title = document.getElementById('examTitle').value.trim();
+      const mins = parseInt(document.getElementById('examMins').value, 10) || 15;
+      const raw = document.getElementById('examJson').value.trim();
+      if (!title || !raw) return alert("Enter exam title and questions!");
 
-  onAuthStateChanged(auth, (user) => {
-    isAdmin = !!user;
-    document.getElementById('authStatus').textContent = isAdmin ? `Lecturer (${user.email})` : "Student View";
-    document.getElementById('loginToggleBtn').style.display = isAdmin ? 'none' : 'inline-block';
-    document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
-    document.querySelectorAll('.admin-only').forEach(el => {
-      if (el.id === 'renameBatchBox') return;
-      el.style.display = isAdmin ? (el.tagName === 'TH' || el.tagName === 'TD' ? 'table-cell' : (el.tagName === 'BUTTON' ? 'inline-block' : 'block')) : 'none';
+      const questions = raw.split('\n').map(line => {
+        const parts = line.split('|').map(p => p.trim());
+        return {
+          q: parts[0]?.replace(/^Q:\s*/i, ''),
+          A: parts[1]?.replace(/^A:\s*/i, ''),
+          B: parts[2]?.replace(/^B:\s*/i, ''),
+          C: parts[3]?.replace(/^C:\s*/i, ''),
+          ans: parts[4]?.replace(/^ANS:\s*/i, '').toUpperCase()
+        };
+      }).filter(item => item.q && item.ans);
+
+      await setDoc(doc(db, "exams", currentBatch), { batch: currentBatch, title, mins, questions, active: true });
+      alert(`Exam activated for ${getBatchName(currentBatch)}!`);
+    };
+
+    window.closeExam = async () => {
+      await setDoc(doc(db, "exams", currentBatch), { active: false }, { merge: true });
+      alert(`Exam closed for ${getBatchName(currentBatch)}.`);
+    };
+
+    onSnapshot(collection(db, "exams"), (snap) => {
+      allExams = {};
+      snap.docs.forEach(d => { allExams[d.id] = d.data(); });
+      renderExamLobby();
     });
-    document.querySelectorAll('.student-only').forEach(el => {
-      el.style.display = isAdmin ? 'none' : 'block';
-    });
-    window.renderAll();
-  });
 
-  // --- 1. SEPARATE ASSIGNMENT & TEST TOTALS + SEPARATE AVERAGES OUT OF 5 ---
-  function computeSeparateStats(a1, a2, t1, t2) {
-    const hasA1 = a1 !== '' && a1 !== undefined && !isNaN(parseFloat(a1));
-    const hasA2 = a2 !== '' && a2 !== undefined && !isNaN(parseFloat(a2));
-    const hasT1 = t1 !== '' && t1 !== undefined && !isNaN(parseFloat(t1));
-    const hasT2 = t2 !== '' && t2 !== undefined && !isNaN(parseFloat(t2));
+    function renderExamLobby() {
+      const activeExam = allExams[currentBatch];
+      const lobby = document.getElementById('activeExamInfo');
+      if (activeExam && activeExam.active) {
+        lobby.innerHTML = `
+          <h4>Live Exam: ${activeExam.title} (${activeExam.mins} mins | ${activeExam.questions.length} Questions)</h4>
+          <input type="text" id="examStuReg" placeholder="Your Roll Number" />
+          <input type="text" id="examStuName" placeholder="Your Full Name" />
+          <button type="button" class="btn" onclick="startProctoredExam()">🔒 Start Locked Exam</button>
+        `;
+      } else {
+        lobby.innerHTML = `<p>No active exam right now for <strong>${getBatchName(currentBatch)}</strong>.</p>`;
+      }
+    }
+
+    let examActiveFlag = false, violations = 0, examInterval = null, candidate = {}, runningExam = null;
+
+    window.startProctoredExam = async () => {
