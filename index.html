@@ -28,6 +28,25 @@
       gap: 10px;
     }
     header h1 { margin: 0; font-size: 1.25rem; }
+    .batch-bar {
+      background: #dbeafe;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #bfdbfe;
+    }
+    .batch-bar label { font-weight: 700; color: #1e3a8a; margin: 0; }
+    .batch-bar select {
+      width: auto;
+      min-width: 200px;
+      margin: 0;
+      padding: 8px 12px;
+      font-weight: 600;
+      border: 2px solid #2563eb;
+    }
     .container { max-width: 900px; margin: 20px auto; padding: 0 16px; }
     .nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; }
     .nav button {
@@ -93,6 +112,19 @@
   </div>
 </header>
 
+<!-- BATCH SELECTOR BAR -->
+<div class="batch-bar">
+  <label for="activeBatchSelect">🏫 Select Your Batch:</label>
+  <select id="activeBatchSelect" onchange="changeBatch()">
+    <option value="Batch 1">Batch 1</option>
+    <option value="Batch 2">Batch 2</option>
+    <option value="Batch 3">Batch 3</option>
+    <option value="Batch 4">Batch 4</option>
+    <option value="Batch 5">Batch 5</option>
+    <option value="Batch 6">Batch 6</option>
+  </select>
+</div>
+
 <div class="container">
   <div id="loginBox" class="card" style="display:none; max-width:400px; margin:0 auto 20px;">
     <h3 style="margin-top:0;">🔐 Faculty Admin Login</h3>
@@ -108,18 +140,19 @@
     <button onclick="showTab('exam', this)">📝 Online Exam Portal</button>
   </div>
 
+  <!-- 1. MARKS & DETAILS -->
   <div id="marks" class="section active">
     <div class="card admin-only">
-      <h3 style="margin-top:0;">➕ Add / Update Student Record</h3>
+      <h3 style="margin-top:0;">➕ Add / Update Student Record (<span class="currentBatchLabel">Batch 1</span>)</h3>
       <input type="text" id="stuReg" placeholder="Register / Roll Number (e.g., 24BA101)" />
       <input type="text" id="stuName" placeholder="Student Full Name" />
-      <input type="text" id="stuCourse" placeholder="Subject / Class (e.g., BA 1st Sem Journalism)" />
+      <input type="text" id="stuCourse" placeholder="Subject / Paper Name" />
       <input type="text" id="stuMarks" placeholder="Marks / Attendance (e.g., IA-1: 18/20 | Attendance: 88%)" />
       <button class="btn" onclick="saveStudent()">Save / Update Student</button>
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0;">Live Student Marks & Records</h3>
+      <h3 style="margin-top:0;">Live Marks & Records — <span class="currentBatchLabel">Batch 1</span></h3>
       <input type="text" id="searchReg" placeholder="🔍 Search by Roll Number or Name..." onkeyup="renderStudents()" />
       <div style="overflow-x:auto;">
         <table>
@@ -138,47 +171,53 @@
     </div>
   </div>
 
+  <!-- 2. IMPORTANT DATES -->
   <div id="dates" class="section">
     <div class="card admin-only">
-      <h3 style="margin-top:0;">📌 Post Assignment / Exam Date</h3>
+      <h3 style="margin-top:0;">📌 Post Assignment / Exam Date (<span class="currentBatchLabel">Batch 1</span>)</h3>
       <input type="date" id="eventDate" />
-      <input type="text" id="eventTitle" placeholder="Title (e.g., Advertising Campaign Submission)" />
+      <input type="text" id="eventTitle" placeholder="Title (e.g., Assignment Submission)" />
       <textarea id="eventDesc" rows="2" placeholder="Instructions or details..."></textarea>
-      <button class="btn" onclick="addDate()">Publish Date</button>
+      <button class="btn" onclick="addDate()">Publish Date for This Batch</button>
     </div>
     <div id="datesList"></div>
   </div>
 
+  <!-- 3. LECTURE NOTES -->
   <div id="notes" class="section">
     <div class="card admin-only">
-      <h3 style="margin-top:0;">📤 Upload / Share Lecture Notes</h3>
+      <h3 style="margin-top:0;">📤 Upload / Share Lecture Notes (<span class="currentBatchLabel">Batch 1</span>)</h3>
       <input type="text" id="noteTitle" placeholder="Topic / Chapter Title" />
-      <input type="text" id="noteSubject" placeholder="Subject & Semester" />
-      <input type="url" id="noteLink" placeholder="Google Drive / PDF Link (Make sure link is set to 'Anyone with link can view')" />
+      <input type="text" id="noteSubject" placeholder="Subject Name" />
+      <input type="url" id="noteLink" placeholder="Google Drive / PDF Link (Anyone with link can view)" />
       <textarea id="noteSummary" rows="3" placeholder="Or paste key summary notes directly here..."></textarea>
-      <button class="btn" onclick="addNote()">Publish Notes</button>
+      <button class="btn" onclick="addNote()">Publish Notes for This Batch</button>
     </div>
     <div id="notesList"></div>
   </div>
 
+  <!-- 4. EXAM PORTAL -->
   <div id="exam" class="section">
     <div class="card admin-only">
-      <h3 style="margin-top:0;">🛠️ Create Proctored Exam</h3>
+      <h3 style="margin-top:0;">🛠️ Create Proctored Exam — Only for <span class="currentBatchLabel">Batch 1</span></h3>
       <input type="text" id="examTitle" placeholder="Exam Title (e.g., Internal Assessment - Unit 1)" />
       <input type="number" id="examMins" placeholder="Duration in Minutes (e.g., 15)" value="15" />
       <textarea id="examJson" rows="6" placeholder='Paste questions in this format:
 Q: Who wrote "The Solitary Reaper"? | A: William Wordsworth | B: John Keats | C: P.B. Shelley | ANS: A
 Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print Report | ANS: B'></textarea>
-      <button class="btn" onclick="publishExam()">Activate Live Exam</button>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn" onclick="publishExam()">Activate Exam for <span class="currentBatchLabel">Batch 1</span></button>
+        <button class="btn btn-danger" onclick="closeExam()">End / Close Exam for This Batch</button>
+      </div>
     </div>
 
     <div class="card admin-only">
-      <h3 style="margin-top:0;">📥 Student Exam Submissions</h3>
+      <h3 style="margin-top:0;">📥 Student Exam Submissions (<span class="currentBatchLabel">Batch 1</span>)</h3>
       <div id="submissionsList">No submissions yet.</div>
     </div>
 
     <div class="card" id="studentExamLobby">
-      <h3 style="margin-top:0;">🛡️ Proctored Exam Hall</h3>
+      <h3 style="margin-top:0;">🛡️ Proctored Exam Hall — <span class="currentBatchLabel">Batch 1</span></h3>
       <p style="color:var(--muted); font-size:0.9rem;">
         <strong>Strict Exam Rules:</strong> Once you start, your screen enters Full-Screen Lockdown.
         <strong>Do not switch apps, open another browser tab, take screenshots, or exit full-screen.</strong>
@@ -189,6 +228,7 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
   </div>
 </div>
 
+<!-- FULL-SCREEN LOCKED EXAM OVERLAY -->
 <div id="examOverlay" class="exam-lock-overlay no-select" oncontextmenu="return false;">
   <div style="max-width:750px; margin:0 auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
@@ -220,9 +260,38 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
   const db = getFirestore(app);
 
   let isAdmin = false;
+  let currentBatch = localStorage.getItem('selectedBatch') || 'Batch 1';
   let allStudents = [];
-  let activeExam = null;
+  let allDates = [];
+  let allNotes = [];
+  let allExams = {};
+  let allSubmissions = [];
 
+  // Initialize Batch Selector
+  const batchSelect = document.getElementById('activeBatchSelect');
+  batchSelect.value = currentBatch;
+  updateBatchLabels();
+
+  window.changeBatch = () => {
+    currentBatch = batchSelect.value;
+    localStorage.setItem('selectedBatch', currentBatch);
+    updateBatchLabels();
+    renderAll();
+  };
+
+  function updateBatchLabels() {
+    document.querySelectorAll('.currentBatchLabel').forEach(el => el.textContent = currentBatch);
+  }
+
+  function renderAll() {
+    renderStudents();
+    renderDates();
+    renderNotes();
+    renderExamLobby();
+    renderSubmissions();
+  }
+
+  // --- AUTH ---
   window.toggleLoginModal = () => {
     const box = document.getElementById('loginBox');
     box.style.display = box.style.display === 'none' ? 'block' : 'none';
@@ -249,7 +318,7 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
     document.querySelectorAll('.admin-only').forEach(el => {
       el.style.display = isAdmin ? (el.tagName === 'TH' || el.tagName === 'TD' ? 'table-cell' : 'block') : 'none';
     });
-    renderStudents();
+    renderAll();
   });
 
   window.showTab = (id, btn) => {
@@ -259,21 +328,23 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
     btn.classList.add('active');
   };
 
+  // --- 1. MARKS & STUDENTS ---
   window.saveStudent = async () => {
     const reg = document.getElementById('stuReg').value.trim().toUpperCase();
     const name = document.getElementById('stuName').value.trim();
     const course = document.getElementById('stuCourse').value.trim();
     const marks = document.getElementById('stuMarks').value.trim();
     if (!reg || !name) return alert("Enter Roll Number and Name!");
-    await setDoc(doc(db, "students", reg), { reg, name, course, marks });
+    const docId = `${currentBatch}_${reg}`;
+    await setDoc(doc(db, "students", docId), { docId, batch: currentBatch, reg, name, course, marks });
     document.getElementById('stuReg').value = "";
     document.getElementById('stuName').value = "";
     document.getElementById('stuCourse').value = "";
     document.getElementById('stuMarks').value = "";
   };
 
-  window.editStudent = (reg) => {
-    const s = allStudents.find(x => x.reg === reg);
+  window.editStudent = (docId) => {
+    const s = allStudents.find(x => x.docId === docId);
     if (!s) return;
     document.getElementById('stuReg').value = s.reg;
     document.getElementById('stuName').value = s.name;
@@ -282,18 +353,21 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  window.deleteStudent = async (reg) => {
-    if (confirm(`Delete ${reg}?`)) await deleteDoc(doc(db, "students", reg));
+  window.deleteStudent = async (docId) => {
+    if (confirm("Delete this student record?")) await deleteDoc(doc(db, "students", docId));
   };
 
   onSnapshot(collection(db, "students"), (snap) => {
-    allStudents = snap.docs.map(d => d.data());
+    allStudents = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
     renderStudents();
   });
 
   window.renderStudents = () => {
     const filter = document.getElementById('searchReg').value.toLowerCase();
-    const filtered = allStudents.filter(s => s.reg.toLowerCase().includes(filter) || s.name.toLowerCase().includes(filter));
+    const filtered = allStudents
+      .filter(s => (s.batch || 'Batch 1') === currentBatch)
+      .filter(s => s.reg.toLowerCase().includes(filter) || s.name.toLowerCase().includes(filter));
+
     document.getElementById('studentsTable').innerHTML = filtered.map(s => `
       <tr>
         <td><strong>${s.reg}</strong></td>
@@ -301,19 +375,20 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
         <td>${s.course}</td>
         <td>${s.marks}</td>
         ${isAdmin ? `<td>
-          <button class="btn btn-sm" onclick="editStudent('${s.reg}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.reg}')">X</button>
+          <button class="btn btn-sm" onclick="editStudent('${s.docId}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.docId}')">X</button>
         </td>` : ''}
       </tr>
-    `).join('') || `<tr><td colspan="5">No student records found.</td></tr>`;
+    `).join('') || `<tr><td colspan="5">No student records found for ${currentBatch}.</td></tr>`;
   };
 
+  // --- 2. IMPORTANT DATES ---
   window.addDate = async () => {
     const date = document.getElementById('eventDate').value;
     const title = document.getElementById('eventTitle').value.trim();
     const desc = document.getElementById('eventDesc').value.trim();
     if (!date || !title) return alert("Enter date and title!");
-    await addDoc(collection(db, "dates"), { date, title, desc });
+    await addDoc(collection(db, "dates"), { batch: currentBatch, date, title, desc });
     document.getElementById('eventTitle').value = "";
     document.getElementById('eventDesc').value = "";
   };
@@ -323,176 +398,10 @@ Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print R
   };
 
   onSnapshot(query(collection(db, "dates"), orderBy("date", "asc")), (snap) => {
-    document.getElementById('datesList').innerHTML = snap.docs.map(d => {
-      const item = d.data();
-      return `<div class="card">
-        <span class="badge badge-date">📅 ${item.date}</span>
-        ${isAdmin ? `<button class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('dates','${d.id}')">Delete</button>` : ''}
-        <h4 style="margin:8px 0 4px;">${item.title}</h4>
-        <p style="margin:0; color:var(--muted);">${item.desc}</p>
-      </div>`;
-    }).join('') || `<div class="card">No upcoming dates posted.</div>`;
+    allDates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderDates();
   });
 
-  window.addNote = async () => {
-    const title = document.getElementById('noteTitle').value.trim();
-    const subject = document.getElementById('noteSubject').value.trim();
-    const link = document.getElementById('noteLink').value.trim();
-    const summary = document.getElementById('noteSummary').value.trim();
-    if (!title) return alert("Enter note title!");
-    await addDoc(collection(db, "notes"), { title, subject, link, summary, created: Date.now() });
-    document.getElementById('noteTitle').value = "";
-    document.getElementById('noteSubject').value = "";
-    document.getElementById('noteLink').value = "";
-    document.getElementById('noteSummary').value = "";
-  };
-
-  onSnapshot(query(collection(db, "notes"), orderBy("created", "desc")), (snap) => {
-    document.getElementById('notesList').innerHTML = snap.docs.map(d => {
-      const n = d.data();
-      return `<div class="card">
-        <span class="badge badge-date">${n.subject || 'General'}</span>
-        ${isAdmin ? `<button class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('notes','${d.id}')">Delete</button>` : ''}
-        <h4 style="margin:8px 0 6px;">${n.title}</h4>
-        <p style="white-space:pre-wrap; margin:0 0 10px;">${n.summary}</p>
-        ${n.link ? `<a href="${n.link}" target="_blank" class="btn btn-sm" style="text-decoration:none; display:inline-block;">📥 Open / Download Notes</a>` : ''}
-      </div>`;
-    }).join('') || `<div class="card">No notes uploaded yet.</div>`;
-  });
-
-  window.publishExam = async () => {
-    const title = document.getElementById('examTitle').value.trim();
-    const mins = parseInt(document.getElementById('examMins').value, 10) || 15;
-    const raw = document.getElementById('examJson').value.trim();
-    if (!title || !raw) return alert("Enter exam title and questions!");
-
-    const questions = raw.split('\n').map(line => {
-      const parts = line.split('|').map(p => p.trim());
-      return {
-        q: parts[0]?.replace(/^Q:\s*/i, ''),
-        A: parts[1]?.replace(/^A:\s*/i, ''),
-        B: parts[2]?.replace(/^B:\s*/i, ''),
-        C: parts[3]?.replace(/^C:\s*/i, ''),
-        ans: parts[4]?.replace(/^ANS:\s*/i, '').toUpperCase()
-      };
-    }).filter(item => item.q && item.ans);
-
-    await setDoc(doc(db, "exams", "current"), { title, mins, questions, active: true });
-    alert("Exam is now LIVE for students!");
-  };
-
-  onSnapshot(doc(db, "exams", "current"), (snap) => {
-    activeExam = snap.exists() ? snap.data() : null;
-    const lobby = document.getElementById('activeExamInfo');
-    if (activeExam && activeExam.active) {
-      lobby.innerHTML = `
-        <h4>Live Exam: ${activeExam.title} (${activeExam.mins} mins | ${activeExam.questions.length} Questions)</h4>
-        <input type="text" id="examStuReg" placeholder="Enter Your Roll Number" />
-        <input type="text" id="examStuName" placeholder="Enter Your Full Name" />
-        <button class="btn" onclick="startProctoredExam()">🔒 Enter Full-Screen & Start Exam</button>
-      `;
-    } else {
-      lobby.innerHTML = `<p>No active exam right now.</p>`;
-    }
-  });
-
-  let examActiveFlag = false;
-  let violations = 0;
-  let examInterval = null;
-  let candidate = {};
-
-  window.startProctoredExam = async () => {
-    const reg = document.getElementById('examStuReg').value.trim().toUpperCase();
-    const name = document.getElementById('examStuName').value.trim();
-    if (!reg || !name) return alert("Enter your Roll Number and Name first!");
-
-    candidate = { reg, name };
-    violations = 0;
-    examActiveFlag = true;
-
-    try { await document.documentElement.requestFullscreen(); } catch (e) {}
-
-    document.getElementById('liveExamHeading').textContent = activeExam.title;
-    document.getElementById('warningBanner').style.display = 'none';
-    document.getElementById('questionsContainer').innerHTML = activeExam.questions.map((item, idx) => `
-      <div style="background:#1e293b; padding:16px; border-radius:10px; margin-bottom:14px;">
-        <p style="font-weight:700; margin-top:0;">${idx + 1}. ${item.q}</p>
-        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="A" style="width:auto; margin-right:8px;"> ${item.A}</label>
-        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="B" style="width:auto; margin-right:8px;"> ${item.B}</label>
-        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="C" style="width:auto; margin-right:8px;"> ${item.C}</label>
-      </div>
-    `).join('');
-
-    document.getElementById('examOverlay').style.display = 'block';
-
-    let seconds = activeExam.mins * 60;
-    examInterval = setInterval(() => {
-      seconds--;
-      const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-      const s = String(seconds % 60).padStart(2, '0');
-      document.getElementById('examTimer').textContent = `${m}:${s}`;
-      if (seconds <= 0) submitExam("Time expired");
-    }, 1000);
-  };
-
-  document.addEventListener("visibilitychange", () => {
-    if (examActiveFlag && document.hidden) triggerViolation("Switched app or browser tab");
-  });
-  window.addEventListener("blur", () => {
-    if (examActiveFlag) triggerViolation("Window lost focus / overlay opened");
-  });
-  document.addEventListener("fullscreenchange", () => {
-    if (examActiveFlag && !document.fullscreenElement) triggerViolation("Exited full-screen mode");
-  });
-
-  function triggerViolation(reason) {
-    violations++;
-    const banner = document.getElementById('warningBanner');
-    banner.style.display = 'block';
-    banner.textContent = `⚠️ SECURITY WARNING (${violations}/2): ${reason}! Next violation will auto-submit your exam.`;
-    if (violations >= 2) {
-      submitExam(`Auto-submitted due to security violation (${reason})`);
-    }
-  }
-
-  window.submitExam = async (statusNote) => {
-    if (!examActiveFlag) return;
-    examActiveFlag = false;
-    clearInterval(examInterval);
-    if (document.fullscreenElement) {
-      try { await document.exitFullscreen(); } catch (e) {}
-    }
-
-    let score = 0;
-    activeExam.questions.forEach((item, idx) => {
-      const chosen = document.querySelector(`input[name="q${idx}"]:checked`);
-      if (chosen && chosen.value === item.ans) score++;
-    });
-
-    await addDoc(collection(db, "submissions"), {
-      exam: activeExam.title,
-      reg: candidate.reg,
-      name: candidate.name,
-      score: `${score}/${activeExam.questions.length}`,
-      status: statusNote,
-      violations,
-      submittedAt: new Date().toLocaleString()
-    });
-
-    document.getElementById('examOverlay').style.display = 'none';
-    alert(`Exam Submitted!\nScore: ${score}/${activeExam.questions.length}\nStatus: ${statusNote}`);
-  };
-
-  onSnapshot(collection(db, "submissions"), (snap) => {
-    if (!isAdmin) return;
-    document.getElementById('submissionsList').innerHTML = snap.docs.map(d => {
-      const s = d.data();
-      return `<div style="padding:8px 0; border-bottom:1px solid #e2e8f0;">
-        <strong>${s.reg} - ${s.name}</strong> | Score: <strong>${s.score}</strong> |
-        <span style="color:${s.violations > 0 ? 'red' : 'green'};">${s.status}</span> (${s.submittedAt})
-      </div>`;
-    }).join('') || "No submissions yet.";
-  });
-</script>
-</body>
-</html>
+  function renderDates() {
+    const filtered = allDates.filter(d => (d.batch || 'Batch 1') === currentBatch);
+    document.getElementById
