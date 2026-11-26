@@ -349,4 +349,838 @@
     <div class="card" style="border-left: 4px solid var(--success);">
       <h3 style="margin-top:0;">📤 Submit Your Assignment / Homework (<span class="currentBatchLabel">Batch 1</span>)</h3>
       <div class="grid-2">
-        <input type="text" id="subRoll
+        <input type="text" id="subRoll" placeholder="Your Roll Number (e.g., 24BA101)" />
+        <input type="text" id="subName" placeholder="Your Full Name" />
+      </div>
+      <select id="subTaskSelect">
+        <option value="General Homework / Work">General Homework / Work</option>
+      </select>
+      <input type="url" id="subLink" placeholder="Paste Google Drive / Docs / PDF Link of your work" />
+      <textarea id="subText" rows="3" placeholder="Or type / paste your homework answer directly here..."></textarea>
+      <button type="button" class="btn btn-success" onclick="submitStudentWork()">🚀 Submit Work</button>
+      <span id="workSubMsg" style="margin-left:10px; font-weight:700; color:var(--success);"></span>
+    </div>
+
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">📥 Received Student Works (<span class="currentBatchLabel">Batch 1</span>)</h3>
+      <div id="receivedWorksList">No submissions yet.</div>
+    </div>
+  </div>
+
+  <!-- TAB 4: NOTES & DATES -->
+  <div id="notes" class="section">
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">📤 Share Lecture Notes / Important Date (<span class="currentBatchLabel">Batch 1</span>)</h3>
+      <input type="text" id="noteTitle" placeholder="Topic / Announcement Title" />
+      <input type="date" id="noteDate" />
+      <input type="url" id="noteLink" placeholder="Google Drive / PDF Link (Optional)" />
+      <textarea id="noteSummary" rows="3" placeholder="Notes summary or announcement details..."></textarea>
+      <button type="button" class="btn" onclick="addNote()">Publish</button>
+    </div>
+    <div id="notesList"></div>
+  </div>
+
+  <!-- TAB 5: ONLINE EXAM -->
+  <div id="exam" class="section">
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">🛠️ Create Proctored Exam — Only for <span class="currentBatchLabel">Batch 1</span></h3>
+      <input type="text" id="examTitle" placeholder="Exam Title (e.g., Quiz 1 / Internal Exam)" />
+      <input type="number" id="examMins" placeholder="Duration in Minutes" value="15" />
+      <textarea id="examJson" rows="5" placeholder='Q: Who wrote "The Solitary Reaper"? | A: William Wordsworth | B: John Keats | C: P.B. Shelley | ANS: A'></textarea>
+      <button type="button" class="btn" onclick="publishExam()">Activate Exam</button>
+      <button type="button" class="btn btn-danger" onclick="closeExam()">Close Exam</button>
+    </div>
+
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">📥 Exam Results (<span class="currentBatchLabel">Batch 1</span>)</h3>
+      <div id="submissionsList">No exam submissions yet.</div>
+    </div>
+
+    <div class="card" id="studentExamLobby">
+      <h3 style="margin-top:0;">🛡️ Proctored Exam Hall — <span class="currentBatchLabel">Batch 1</span></h3>
+      <p style="color:var(--muted); font-size:0.88rem;">
+        Full-Screen Lockdown enabled. Switching tabs/apps more than once auto-submits your exam.
+      </p>
+      <div id="activeExamInfo">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- FULL-SCREEN LOCKED EXAM OVERLAY -->
+<div id="examOverlay" class="exam-lock-overlay no-select" oncontextmenu="return false;">
+  <div style="max-width:750px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
+      <h2 id="liveExamHeading" style="margin:0; color:#38bdf8;">Exam in Progress</h2>
+      <div id="examTimer" style="font-size:1.5rem; font-weight:800; color:#facc15;">15:00</div>
+    </div>
+    <p id="warningBanner" style="background:#7f1d1d; padding:10px; border-radius:8px; display:none; font-weight:700;"></p>
+    <div id="questionsContainer" style="margin-top:20px;"></div>
+    <button type="button" class="btn" style="margin-top:20px; width:100%; padding:14px; font-size:1.1rem;" onclick="submitExam('Completed normally')">Submit Exam</button>
+  </div>
+</div>
+
+<script>
+  // --- UI STATE ---
+  let batchLabels = {
+    batch1: 'Batch 1', batch2: 'Batch 2', batch3: 'Batch 3',
+    batch4: 'Batch 4', batch5: 'Batch 5', batch6: 'Batch 6'
+  };
+  let currentBatch = localStorage.getItem('selectedBatchKey') || 'batch1';
+  if (!batchLabels[currentBatch]) currentBatch = 'batch1';
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  document.getElementById('attDate').value = todayStr;
+  document.getElementById('attMonthFilter').value = todayStr.slice(0, 7);
+
+  function getBatchName(key) { return batchLabels[key] || key; }
+
+  function refreshBatchDropdown() {
+    const sel = document.getElementById('activeBatchSelect');
+    sel.innerHTML = Object.keys(batchLabels).map(k =>
+      `<option value="${k}" ${k === currentBatch ? 'selected' : ''}>${batchLabels[k]}</option>`
+    ).join('');
+    document.querySelectorAll('.currentBatchLabel').forEach(el => el.textContent = getBatchName(currentBatch));
+  }
+  refreshBatchDropdown();
+
+  function toggleLoginModal() {
+    const box = document.getElementById('loginBox');
+    box.style.display = (box.style.display === 'none' || box.style.display === '') ? 'block' : 'none';
+  }
+
+  function toggleRenameModal() {
+    const box = document.getElementById('renameBatchBox');
+    const isHidden = (box.style.display === 'none' || box.style.display === '');
+    if (isHidden) {
+      Object.keys(batchLabels).forEach(k => { document.getElementById('bn_' + k).value = batchLabels[k]; });
+    }
+    box.style.display = isHidden ? 'block' : 'none';
+  }
+
+  function showTab(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function changeBatch() {
+    currentBatch = document.getElementById('activeBatchSelect').value;
+    localStorage.setItem('selectedBatchKey', currentBatch);
+    document.querySelectorAll('.currentBatchLabel').forEach(el => el.textContent = getBatchName(currentBatch));
+    document.getElementById('studentPrivateResult').innerHTML = '';
+    if (window.renderAll) window.renderAll();
+  }
+
+  function loadCsvFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => { document.getElementById('bulkStudentsInput').value = e.target.result; };
+    reader.readAsText(file);
+  }
+
+  // --- INITIALIZE FIREBASE (COMPAT SDK) ---
+  let auth = null, db = null;
+  let isAdmin = false;
+  let allStudents = [], allAttendance = [], allHwTasks = [], allStudentWorks = [], allNotes = [], allExams = {}, allSubmissions = [];
+  let draftAttMap = {};
+
+  if (typeof firebase === 'undefined') {
+    document.getElementById('loginError').textContent = "⚠️ Could not load Firebase library from jsDelivr. Check your internet connection.";
+  } else {
+    firebase.initializeApp({
+      apiKey: "AIzaSyBVGHkagJ2Ap34oeWhAPKd9r26CnaZXzRU",
+      authDomain: "class-portal-7816f.firebaseapp.com",
+      projectId: "class-portal-7816f",
+      storageBucket: "class-portal-7816f.firebasestorage.app",
+      messagingSenderId: "265892681101",
+      appId: "1:265892681101:web:39e8d51bf3dee115f759c4"
+    });
+    auth = firebase.auth();
+    db = firebase.firestore();
+
+    auth.onAuthStateChanged((user) => {
+      isAdmin = !!user;
+      document.getElementById('authStatus').textContent = isAdmin ? `Lecturer (${user.email})` : "Student View";
+      document.getElementById('loginToggleBtn').style.display = isAdmin ? 'none' : 'inline-block';
+      document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
+      document.querySelectorAll('.admin-only').forEach(el => {
+        if (el.id === 'renameBatchBox') return;
+        el.style.display = isAdmin ? (el.tagName === 'TH' || el.tagName === 'TD' ? 'table-cell' : (el.tagName === 'BUTTON' ? 'inline-block' : 'block')) : 'none';
+      });
+      document.querySelectorAll('.student-only').forEach(el => {
+        el.style.display = isAdmin ? 'none' : 'block';
+      });
+      renderAll();
+    });
+
+    db.collection("config").doc("batches").onSnapshot((snap) => {
+      if (snap.exists) {
+        batchLabels = { ...batchLabels, ...snap.data() };
+        refreshBatchDropdown();
+      }
+    });
+
+    db.collection("students").onSnapshot((snap) => {
+      allStudents = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+      renderAdminMarksTable();
+      renderDailyAttendanceSheet();
+      renderMonthlyAttendance();
+    });
+
+    db.collection("attendance").onSnapshot((snap) => {
+      allAttendance = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderDailyAttendanceSheet();
+      renderMonthlyAttendance();
+    });
+
+    db.collection("hw_tasks").orderBy("created", "desc").onSnapshot((snap) => {
+      allHwTasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderHomeworkSection();
+    });
+
+    db.collection("student_works").orderBy("created", "desc").onSnapshot((snap) => {
+      allStudentWorks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderHomeworkSection();
+    });
+
+    db.collection("notes").orderBy("created", "desc").onSnapshot((snap) => {
+      allNotes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderNotes();
+    });
+
+    db.collection("exams").onSnapshot((snap) => {
+      allExams = {};
+      snap.docs.forEach(d => { allExams[d.id] = d.data(); });
+      renderExamLobby();
+    });
+
+    db.collection("submissions").onSnapshot((snap) => {
+      allSubmissions = snap.docs.map(d => d.data());
+      renderSubmissions();
+    });
+  }
+
+  function matchesBatch(itemBatch) {
+    if (itemBatch === currentBatch) return true;
+    const legacyMap = { 'Batch 1': 'batch1', 'Batch 2': 'batch2', 'Batch 3': 'batch3', 'Batch 4': 'batch4', 'Batch 5': 'batch5', 'Batch 6': 'batch6' };
+    return legacyMap[itemBatch] === currentBatch;
+  }
+
+  function renderAll() {
+    renderAdminMarksTable();
+    renderDailyAttendanceSheet();
+    renderMonthlyAttendance();
+    renderHomeworkSection();
+    renderNotes();
+    renderExamLobby();
+    renderSubmissions();
+  }
+
+  async function adminLogin() {
+    if (!auth) return;
+    const email = document.getElementById('adminEmail').value.trim().toLowerCase();
+    const pass = document.getElementById('adminPass').value;
+    const errEl = document.getElementById('loginError');
+    if (!email || !pass) {
+      errEl.style.color = "#dc2626";
+      errEl.textContent = "Enter both email and password.";
+      return;
+    }
+    errEl.style.color = "#1e3a8a";
+    errEl.textContent = "Signing in...";
+    try {
+      await auth.signInWithEmailAndPassword(email, pass);
+      errEl.textContent = "";
+      document.getElementById('loginBox').style.display = 'none';
+    } catch (err) {
+      errEl.style.color = "#dc2626";
+      if (err.code === 'auth/unauthorized-domain') {
+        errEl.innerHTML = "Domain blocked: Open Firebase > Authentication > Settings > Authorized domains and add <b>amosjacob02-oss.github.io</b>";
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        errEl.textContent = "Wrong email or password. Click 'Reset Password' or check Firebase Authentication > Users.";
+      } else {
+        errEl.textContent = "Login failed: " + err.message;
+      }
+    }
+  }
+
+  async function resetAdminPassword() {
+    if (!auth) return;
+    const email = document.getElementById('adminEmail').value.trim().toLowerCase();
+    const errEl = document.getElementById('loginError');
+    if (!email) {
+      errEl.style.color = "#dc2626";
+      errEl.textContent = "Type your lecturer email above first, then click Reset Password.";
+      return;
+    }
+    try {
+      await auth.sendPasswordResetEmail(email);
+      errEl.style.color = "#16a34a";
+      errEl.textContent = "✅ Password reset email sent! Check your inbox/spam.";
+    } catch (e) {
+      errEl.style.color = "#dc2626";
+      errEl.textContent = e.message;
+    }
+  }
+
+  function adminLogout() { if (auth) auth.signOut(); }
+
+  async function saveBatchNames() {
+    const updated = {};
+    Object.keys(batchLabels).forEach(k => {
+      const val = document.getElementById('bn_' + k).value.trim();
+      updated[k] = val || batchLabels[k];
+    });
+    await db.collection("config").doc("batches").set(updated);
+    document.getElementById('renameBatchBox').style.display = 'none';
+    alert("Batch names updated!");
+  }
+
+  function computeSeparateStats(a1, a2, t1, t2) {
+    const hasA1 = a1 !== '' && a1 !== undefined && !isNaN(parseFloat(a1));
+    const hasA2 = a2 !== '' && a2 !== undefined && !isNaN(parseFloat(a2));
+    const hasT1 = t1 !== '' && t1 !== undefined && !isNaN(parseFloat(t1));
+    const hasT2 = t2 !== '' && t2 !== undefined && !isNaN(parseFloat(t2));
+
+    let assignTotal = "Pending", assignAvg5 = "Pending";
+    if (hasA1 && hasA2) {
+      const sumA = parseFloat(a1) + parseFloat(a2);
+      assignTotal = `${sumA} / 20`;
+      assignAvg5 = `${((sumA / 20) * 5).toFixed(2)} / 5`;
+    } else if (hasA1 || hasA2) {
+      const partialA = (hasA1 ? parseFloat(a1) : 0) + (hasA2 ? parseFloat(a2) : 0);
+      assignTotal = `${partialA} / 20 (1 left)`;
+    }
+
+    let testTotal = "Pending", testAvg5 = "Pending";
+    if (hasT1 && hasT2) {
+      const sumT = parseFloat(t1) + parseFloat(t2);
+      testTotal = `${sumT} / 50`;
+      testAvg5 = `${((sumT / 50) * 5).toFixed(2)} / 5`;
+    } else if (hasT1 || hasT2) {
+      const partialT = (hasT1 ? parseFloat(t1) : 0) + (hasT2 ? parseFloat(t2) : 0);
+      testTotal = `${partialT} / 50 (1 left)`;
+    }
+
+    return { assignTotal, assignAvg5, testTotal, testAvg5, assignReady: hasA1 && hasA2, testReady: hasT1 && hasT2 };
+  }
+
+  function recalcRowStats(docId) {
+    const a1 = document.getElementById(`a1_${docId}`).value;
+    const a2 = document.getElementById(`a2_${docId}`).value;
+    const t1 = document.getElementById(`t1_${docId}`).value;
+    const t2 = document.getElementById(`t2_${docId}`).value;
+    const st = computeSeparateStats(a1, a2, t1, t2);
+
+    document.getElementById(`atot_${docId}`).textContent = st.assignTotal;
+    const aBadge = document.getElementById(`aavg_${docId}`);
+    aBadge.textContent = st.assignAvg5;
+    aBadge.className = `badge ${st.assignReady ? 'badge-green' : 'badge-blue'}`;
+
+    document.getElementById(`ttot_${docId}`).textContent = st.testTotal;
+    const tBadge = document.getElementById(`tavg_${docId}`);
+    tBadge.textContent = st.testAvg5;
+    tBadge.className = `badge ${st.testReady ? 'badge-purple' : 'badge-blue'}`;
+  }
+
+  async function bulkSaveStudents() {
+    const raw = document.getElementById('bulkStudentsInput').value.trim();
+    const statusEl = document.getElementById('bulkStatus');
+    if (!raw) return alert("Choose a CSV file or paste your student list first!");
+
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const batchWrite = db.batch();
+    const slotNum = currentBatch.replace(/\D/g, '') || '1';
+    let count = 0;
+
+    lines.forEach((line, index) => {
+      const parts = line.includes('\t')
+        ? line.split('\t').map(p => p.trim().replace(/^"|"$/g, ''))
+        : line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+
+      const firstLower = (parts[0] || '').toLowerCase();
+      if (index === 0 && (firstLower.includes('roll') || firstLower.includes('reg') || firstLower === 'name')) return;
+
+      count++;
+      let reg = parts.length === 1 ? `B${slotNum}-${String(count).padStart(2, '0')}` : (parts[0] || `B${slotNum}-${String(count).padStart(2, '0')}`).toUpperCase();
+      let name = parts.length === 1 ? parts[0] : (parts[1] || '');
+
+      if (name) {
+        const docId = `${currentBatch}_${reg.replace(/[^A-Z0-9_-]/g, '')}`;
+        batchWrite.set(db.collection("students").doc(docId), {
+          docId, batch: currentBatch, reg, name,
+          a1: '', a2: '', t1: '', t2: '', q1: ''
+        }, { merge: true });
+      }
+    });
+
+    statusEl.textContent = `Saving ${count} students...`;
+    await batchWrite.commit();
+    document.getElementById('bulkStudentsInput').value = "";
+    document.getElementById('csvFileInput').value = "";
+    statusEl.textContent = `✅ Added ${count} students!`;
+    setTimeout(() => statusEl.textContent = "", 4000);
+  }
+
+  async function addSingleStudent() {
+    const reg = document.getElementById('newStuReg').value.trim().toUpperCase();
+    const name = document.getElementById('newStuName').value.trim();
+    if (!reg || !name) return alert("Enter Roll Number and Name!");
+    const docId = `${currentBatch}_${reg.replace(/[^A-Z0-9_-]/g, '')}`;
+    await db.collection("students").doc(docId).set({
+      docId, batch: currentBatch, reg, name, a1: '', a2: '', t1: '', t2: '', q1: ''
+    }, { merge: true });
+    document.getElementById('newStuReg').value = "";
+    document.getElementById('newStuName').value = "";
+  }
+
+  async function saveAllSpreadsheetMarks() {
+    const batchStudents = allStudents.filter(s => matchesBatch(s.batch));
+    if (batchStudents.length === 0) return;
+    const msg = document.getElementById('marksSaveMsg');
+    msg.textContent = "Saving...";
+    const batchWrite = db.batch();
+
+    batchStudents.forEach(s => {
+      const a1El = document.getElementById(`a1_${s.docId}`);
+      if (!a1El) return;
+      batchWrite.set(db.collection("students").doc(s.docId), {
+        a1: a1El.value,
+        a2: document.getElementById(`a2_${s.docId}`).value,
+        t1: document.getElementById(`t1_${s.docId}`).value,
+        t2: document.getElementById(`t2_${s.docId}`).value,
+        q1: document.getElementById(`q1_${s.docId}`).value
+      }, { merge: true });
+    });
+
+    await batchWrite.commit();
+    msg.textContent = "✅ All marks saved!";
+    setTimeout(() => msg.textContent = "", 3500);
+  }
+
+  async function deleteStudent(docId) {
+    if (confirm("Delete this student?")) await db.collection("students").doc(docId).delete();
+  }
+
+  function renderAdminMarksTable() {
+    const filter = document.getElementById('searchReg').value.toLowerCase();
+    const batchStudents = allStudents
+      .filter(s => matchesBatch(s.batch))
+      .filter(s => s.reg.toLowerCase().includes(filter) || s.name.toLowerCase().includes(filter))
+      .sort((a, b) => a.reg.localeCompare(b.reg));
+
+    document.getElementById('adminMarksBody').innerHTML = batchStudents.map(s => {
+      const st = computeSeparateStats(s.a1, s.a2, s.t1, s.t2);
+      return `<tr>
+        <td><strong>${s.reg}</strong></td>
+        <td>${s.name}</td>
+        <td><input type="number" step="0.5" max="10" class="mark-cell" id="a1_${s.docId}" value="${s.a1 ?? ''}" oninput="recalcRowStats('${s.docId}')" /></td>
+        <td><input type="number" step="0.5" max="10" class="mark-cell" id="a2_${s.docId}" value="${s.a2 ?? ''}" oninput="recalcRowStats('${s.docId}')" /></td>
+        <td id="atot_${s.docId}" style="font-weight:700;">${st.assignTotal}</td>
+        <td><span id="aavg_${s.docId}" class="badge ${st.assignReady ? 'badge-green' : 'badge-blue'}">${st.assignAvg5}</span></td>
+        <td><input type="number" step="0.5" max="30" class="mark-cell" id="t1_${s.docId}" value="${s.t1 ?? ''}" oninput="recalcRowStats('${s.docId}')" /></td>
+        <td><input type="number" step="0.5" max="20" class="mark-cell" id="t2_${s.docId}" value="${s.t2 ?? ''}" oninput="recalcRowStats('${s.docId}')" /></td>
+        <td id="ttot_${s.docId}" style="font-weight:700;">${st.testTotal}</td>
+        <td><span id="tavg_${s.docId}" class="badge ${st.testReady ? 'badge-purple' : 'badge-blue'}">${st.testAvg5}</span></td>
+        <td><input type="number" step="0.5" max="30" class="mark-cell" id="q1_${s.docId}" value="${s.q1 ?? ''}" /></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="deleteStudent('${s.docId}')">X</button></td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="12">No students added to ${getBatchName(currentBatch)} yet.</td></tr>`;
+  }
+
+  function lookupMyRecord() {
+    const rollInput = document.getElementById('studentLookupRoll').value.trim().toUpperCase();
+    const out = document.getElementById('studentPrivateResult');
+    if (!rollInput) { out.innerHTML = `<p style="color:#dc2626;">Please enter your Roll Number.</p>`; return; }
+
+    const stu = allStudents.find(s => matchesBatch(s.batch) && s.reg.toUpperCase() === rollInput);
+    if (!stu) {
+      out.innerHTML = `<p style="color:#dc2626;">No record found for Roll No. <strong>${rollInput}</strong> in <strong>${getBatchName(currentBatch)}</strong>.</p>`;
+      return;
+    }
+
+    const st = computeSeparateStats(stu.a1, stu.a2, stu.t1, stu.t2);
+
+    const sessions = allAttendance
+      .filter(a => matchesBatch(a.batch))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const monthMap = {};
+    sessions.forEach(sess => {
+      const status = sess.records ? sess.records[stu.reg] : null;
+      if (status === 'P' || status === 'A') {
+        const ym = sess.date.slice(0, 7);
+        if (!monthMap[ym]) monthMap[ym] = { held: 0, present: 0, absent: 0, logs: [] };
+        monthMap[ym].held++;
+        if (status === 'P') monthMap[ym].present++; else monthMap[ym].absent++;
+        monthMap[ym].logs.push(`<span class="badge ${status === 'P' ? 'badge-green' : 'badge-red'}" style="margin:2px;">${sess.date.slice(8,10)}: ${status}</span>`);
+      }
+    });
+
+    const monthKeys = Object.keys(monthMap).sort().reverse();
+    const monthlyHtml = monthKeys.length > 0 ? `
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Classes Held</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Monthly %</th>
+            <th>Daily Dates</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${monthKeys.map(ym => {
+            const m = monthMap[ym];
+            const pct = Math.round((m.present / m.held) * 100);
+            return `<tr>
+              <td><strong>${ym}</strong></td>
+              <td>${m.held}</td>
+              <td>${m.present}</td>
+              <td>${m.absent}</td>
+              <td><span class="badge ${pct >= 75 ? 'badge-green' : 'badge-red'}">${pct}%</span></td>
+              <td>${m.logs.join('')}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    ` : `<p style="color:var(--muted); font-size:0.86rem; margin:6px 0 0;">No attendance sessions recorded yet.</p>`;
+
+    out.innerHTML = `
+      <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:16px;">
+        <h4 style="margin:0 0 12px; color:var(--primary);">${stu.name} (${stu.reg}) — ${getBatchName(currentBatch)}</h4>
+        <div class="grid-2">
+          <div style="background:white; border:1px solid #bbf7d0; border-radius:10px; padding:12px;">
+            <div style="font-weight:700; color:#166534; margin-bottom:8px;">📝 Assignments</div>
+            <div class="grid-2">
+              <div class="stat-box"><div class="num">${stu.a1 !== '' && stu.a1 !== undefined ? stu.a1 : '-'} / 10</div><div class="lbl">Assignment 1</div></div>
+              <div class="stat-box"><div class="num">${stu.a2 !== '' && stu.a2 !== undefined ? stu.a2 : '-'} / 10</div><div class="lbl">Assignment 2</div></div>
+              <div class="stat-box"><div class="num">${st.assignTotal}</div><div class="lbl">Assignment Total</div></div>
+              <div class="stat-box" style="background:#dcfce7;"><div class="num" style="color:#166534;">${st.assignAvg5}</div><div class="lbl">Assignment Avg (in 5)</div></div>
+            </div>
+          </div>
+          <div style="background:white; border:1px solid #e9d5ff; border-radius:10px; padding:12px;">
+            <div style="font-weight:700; color:#6b21a8; margin-bottom:8px;">📄 Tests</div>
+            <div class="grid-2">
+              <div class="stat-box"><div class="num">${stu.t1 !== '' && stu.t1 !== undefined ? stu.t1 : '-'} / 30</div><div class="lbl">Test 1</div></div>
+              <div class="stat-box"><div class="num">${stu.t2 !== '' && stu.t2 !== undefined ? stu.t2 : '-'} / 20</div><div class="lbl">Test 2</div></div>
+              <div class="stat-box"><div class="num">${st.testTotal}</div><div class="lbl">Test Total</div></div>
+              <div class="stat-box" style="background:#f3e8ff;"><div class="num" style="color:#6b21a8;">${st.testAvg5}</div><div class="lbl">Test Avg (in 5)</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="stat-box" style="max-width:220px;">
+            <div class="num">${stu.q1 !== '' && stu.q1 !== undefined ? stu.q1 : '-'} / 30</div>
+            <div class="lbl">Quiz 1</div>
+          </div>
+        </div>
+        <div style="margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0;">
+          <strong>🗓️ Monthly Attendance Totals:</strong>
+          <div style="overflow-x:auto;">${monthlyHtml}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderDailyAttendanceSheet() {
+    const dateVal = document.getElementById('attDate').value;
+    const batchStudents = allStudents
+      .filter(s => matchesBatch(s.batch))
+      .sort((a, b) => a.reg.localeCompare(b.reg));
+
+    const existingDoc = allAttendance.find(a => matchesBatch(a.batch) && a.date === dateVal);
+    draftAttMap = existingDoc ? { ...existingDoc.records } : {};
+
+    document.getElementById('dailyAttSheet').innerHTML = batchStudents.map(s => {
+      const st = draftAttMap[s.reg] || '';
+      return `<tr>
+        <td><strong>${s.reg}</strong></td>
+        <td>${s.name}</td>
+        <td>
+          <button type="button" class="att-btn att-p ${st === 'P' ? 'selected' : ''}" onclick="setStudentAtt('${s.reg}', 'P', this)">P (Present)</button>
+          <button type="button" class="att-btn att-a ${st === 'A' ? 'selected' : ''}" onclick="setStudentAtt('${s.reg}', 'A', this)">A (Absent)</button>
+        </td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="3">Add students in the Marks tab first.</td></tr>`;
+  }
+
+  function setStudentAtt(reg, status, btn) {
+    draftAttMap[reg] = status;
+    btn.parentElement.querySelectorAll('.att-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+
+  function markAllAttendance(status) {
+    allStudents.filter(s => matchesBatch(s.batch)).forEach(s => { draftAttMap[s.reg] = status; });
+    renderDailyAttendanceSheet();
+  }
+
+  async function saveDailyAttendance() {
+    const dateVal = document.getElementById('attDate').value;
+    if (!dateVal) return alert("Select a date!");
+    const docId = `${currentBatch}_${dateVal}`;
+    await db.collection("attendance").doc(docId).set({
+      batch: currentBatch, date: dateVal, records: draftAttMap
+    });
+    const msg = document.getElementById('attSaveMsg');
+    msg.textContent = `✅ Saved for ${dateVal}!`;
+    setTimeout(() => msg.textContent = "", 3500);
+  }
+
+  function renderMonthlyAttendance() {
+    const monthVal = document.getElementById('attMonthFilter').value;
+    const batchStudents = allStudents
+      .filter(s => matchesBatch(s.batch))
+      .sort((a, b) => a.reg.localeCompare(b.reg));
+
+    const monthSessions = allAttendance
+      .filter(a => matchesBatch(a.batch) && (!monthVal || a.date.startsWith(monthVal)))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    document.getElementById('monthlyAttTable').innerHTML = batchStudents.map(s => {
+      let held = 0, present = 0, absent = 0;
+      const dailyBadges = [];
+
+      monthSessions.forEach(sess => {
+        const st = sess.records ? sess.records[s.reg] : null;
+        if (st === 'P' || st === 'A') {
+          held++;
+          if (st === 'P') present++; else absent++;
+          const label = monthVal ? sess.date.slice(8, 10) : sess.date.slice(5);
+          dailyBadges.push(`<span class="badge ${st === 'P' ? 'badge-green' : 'badge-red'}" style="margin:2px;">${label}:${st}</span>`);
+        }
+      });
+
+      const pct = held > 0 ? Math.round((present / held) * 100) : 0;
+      const pctBadge = held === 0 ? 'badge-blue' : (pct >= 75 ? 'badge-green' : 'badge-red');
+
+      return `<tr>
+        <td><strong>${s.reg}</strong></td>
+        <td>${s.name}</td>
+        <td>${held}</td>
+        <td>${present}</td>
+        <td>${absent}</td>
+        <td><span class="badge ${pctBadge}">${held > 0 ? pct + '%' : 'N/A'}</span></td>
+        <td>${dailyBadges.join('') || '<span style="color:var(--muted);">No classes logged</span>'}</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="7">No students in ${getBatchName(currentBatch)}.</td></tr>`;
+  }
+
+  async function createHomeworkTask() {
+    const title = document.getElementById('hwTitle').value.trim();
+    const dueDate = document.getElementById('hwDueDate').value;
+    const instructions = document.getElementById('hwInstructions').value.trim();
+    if (!title) return alert("Enter task title!");
+    await db.collection("hw_tasks").add({
+      batch: currentBatch, title, dueDate, instructions, created: Date.now()
+    });
+    document.getElementById('hwTitle').value = "";
+    document.getElementById('hwDueDate').value = "";
+    document.getElementById('hwInstructions').value = "";
+  }
+
+  async function deleteDocItem(col, id) {
+    if (confirm("Delete item?")) await db.collection(col).doc(id).delete();
+  }
+
+  function renderHomeworkSection() {
+    const tasks = allHwTasks.filter(t => matchesBatch(t.batch));
+    document.getElementById('hwTasksList').innerHTML = tasks.map(t => `
+      <div style="padding:10px 0; border-bottom:1px solid #e2e8f0;">
+        ${t.dueDate ? `<span class="badge badge-red">Due: ${t.dueDate}</span>` : ''}
+        ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('hw_tasks','${t.id}')">Delete</button>` : ''}
+        <h4 style="margin:6px 0 4px;">${t.title}</h4>
+        <p style="margin:0; color:var(--muted); font-size:0.9rem;">${t.instructions}</p>
+      </div>
+    `).join('') || `<p style="color:var(--muted);">No specific tasks posted yet—students can still submit general work below.</p>`;
+
+    const sel = document.getElementById('subTaskSelect');
+    sel.innerHTML = tasks.map(t => `<option value="${t.title}">${t.title}</option>`).join('')
+      + `<option value="General Homework / Work">General Homework / Work</option>`;
+
+    if (isAdmin) {
+      const works = allStudentWorks.filter(w => matchesBatch(w.batch));
+      document.getElementById('receivedWorksList').innerHTML = works.map(w => `
+        <div style="padding:10px 0; border-bottom:1px solid #e2e8f0;">
+          <button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('student_works','${w.id}')">Delete</button>
+          <strong>${w.reg} — ${w.name}</strong> <span class="badge badge-blue">${w.task}</span>
+          <div style="font-size:0.82rem; color:var(--muted); margin:3px 0;">Submitted: ${w.submittedAt}</div>
+          ${w.text ? `<p style="background:#f8fafc; padding:8px; border-radius:6px; margin:6px 0; white-space:pre-wrap;">${w.text}</p>` : ''}
+          ${w.link ? `<a href="${w.link}" target="_blank" class="btn btn-sm" style="text-decoration:none; display:inline-block;">🔗 Open Student File / Link</a>` : ''}
+        </div>
+      `).join('') || `No student work submitted yet for ${getBatchName(currentBatch)}.`;
+    }
+  }
+
+  async function submitStudentWork() {
+    const reg = document.getElementById('subRoll').value.trim().toUpperCase();
+    const name = document.getElementById('subName').value.trim();
+    const task = document.getElementById('subTaskSelect').value;
+    const link = document.getElementById('subLink').value.trim();
+    const text = document.getElementById('subText').value.trim();
+
+    if (!reg || !name) return alert("Enter your Roll Number and Name!");
+    if (!link && !text) return alert("Paste your Google Drive/PDF link or type your answer!");
+
+    await db.collection("student_works").add({
+      batch: currentBatch, reg, name, task, link, text,
+      submittedAt: new Date().toLocaleString(), created: Date.now()
+    });
+
+    document.getElementById('subLink').value = "";
+    document.getElementById('subText').value = "";
+    const msg = document.getElementById('workSubMsg');
+    msg.textContent = "✅ Work submitted successfully!";
+    setTimeout(() => msg.textContent = "", 4000);
+  }
+
+  async function addNote() {
+    const title = document.getElementById('noteTitle').value.trim();
+    const date = document.getElementById('noteDate').value;
+    const link = document.getElementById('noteLink').value.trim();
+    const summary = document.getElementById('noteSummary').value.trim();
+    if (!title) return alert("Enter title!");
+    await db.collection("notes").add({ batch: currentBatch, title, date, link, summary, created: Date.now() });
+    ['noteTitle','noteDate','noteLink','noteSummary'].forEach(id => document.getElementById(id).value = "");
+  }
+
+  function renderNotes() {
+    const filtered = allNotes.filter(n => matchesBatch(n.batch));
+    document.getElementById('notesList').innerHTML = filtered.map(n => `
+      <div class="card">
+        ${n.date ? `<span class="badge badge-blue">📅 ${n.date}</span>` : ''}
+        ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('notes','${n.id}')">Delete</button>` : ''}
+        <h4 style="margin:8px 0 6px;">${n.title}</h4>
+        <p style="white-space:pre-wrap; margin:0 0 10px;">${n.summary}</p>
+        ${n.link ? `<a href="${n.link}" target="_blank" class="btn btn-sm" style="text-decoration:none; display:inline-block;">📥 Open Resource</a>` : ''}
+      </div>
+    `).join('') || `<div class="card">No notes or announcements posted for ${getBatchName(currentBatch)}.</div>`;
+  }
+
+  async function publishExam() {
+    const title = document.getElementById('examTitle').value.trim();
+    const mins = parseInt(document.getElementById('examMins').value, 10) || 15;
+    const raw = document.getElementById('examJson').value.trim();
+    if (!title || !raw) return alert("Enter exam title and questions!");
+
+    const questions = raw.split('\n').map(line => {
+      const parts = line.split('|').map(p => p.trim());
+      return {
+        q: parts[0]?.replace(/^Q:\s*/i, ''),
+        A: parts[1]?.replace(/^A:\s*/i, ''),
+        B: parts[2]?.replace(/^B:\s*/i, ''),
+        C: parts[3]?.replace(/^C:\s*/i, ''),
+        ans: parts[4]?.replace(/^ANS:\s*/i, '').toUpperCase()
+      };
+    }).filter(item => item.q && item.ans);
+
+    await db.collection("exams").doc(currentBatch).set({ batch: currentBatch, title, mins, questions, active: true });
+    alert(`Exam activated for ${getBatchName(currentBatch)}!`);
+  }
+
+  async function closeExam() {
+    await db.collection("exams").doc(currentBatch).set({ active: false }, { merge: true });
+    alert(`Exam closed for ${getBatchName(currentBatch)}.`);
+  }
+
+  function renderExamLobby() {
+    const activeExam = allExams[currentBatch];
+    const lobby = document.getElementById('activeExamInfo');
+    if (activeExam && activeExam.active) {
+      lobby.innerHTML = `
+        <h4>Live Exam: ${activeExam.title} (${activeExam.mins} mins | ${activeExam.questions.length} Questions)</h4>
+        <input type="text" id="examStuReg" placeholder="Your Roll Number" />
+        <input type="text" id="examStuName" placeholder="Your Full Name" />
+        <button type="button" class="btn" onclick="startProctoredExam()">🔒 Start Locked Exam</button>
+      `;
+    } else {
+      lobby.innerHTML = `<p>No active exam right now for <strong>${getBatchName(currentBatch)}</strong>.</p>`;
+    }
+  }
+
+  let examActiveFlag = false, violations = 0, examInterval = null, candidate = {}, runningExam = null;
+
+  async function startProctoredExam() {
+    runningExam = allExams[currentBatch];
+    const reg = document.getElementById('examStuReg').value.trim().toUpperCase();
+    const name = document.getElementById('examStuName').value.trim();
+    if (!reg || !name) return alert("Enter Roll Number and Name!");
+
+    candidate = { batch: currentBatch, reg, name };
+    violations = 0;
+    examActiveFlag = true;
+    try { await document.documentElement.requestFullscreen(); } catch (e) {}
+
+    document.getElementById('liveExamHeading').textContent = `${runningExam.title} (${getBatchName(currentBatch)})`;
+    document.getElementById('warningBanner').style.display = 'none';
+    document.getElementById('questionsContainer').innerHTML = runningExam.questions.map((item, idx) => `
+      <div style="background:#1e293b; padding:16px; border-radius:10px; margin-bottom:14px;">
+        <p style="font-weight:700; margin-top:0;">${idx + 1}. ${item.q}</p>
+        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="A" style="width:auto; margin-right:8px;"> ${item.A}</label>
+        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="B" style="width:auto; margin-right:8px;"> ${item.B}</label>
+        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="C" style="width:auto; margin-right:8px;"> ${item.C}</label>
+      </div>
+    `).join('');
+
+    document.getElementById('examOverlay').style.display = 'block';
+    let seconds = runningExam.mins * 60;
+    examInterval = setInterval(() => {
+      seconds--;
+      const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      document.getElementById('examTimer').textContent = `${m}:${s}`;
+      if (seconds <= 0) submitExam("Time expired");
+    }, 1000);
+  }
+
+  document.addEventListener("visibilitychange", () => { if (examActiveFlag && document.hidden) triggerViolation("Switched tab/app"); });
+  window.addEventListener("blur", () => { if (examActiveFlag) triggerViolation("Window lost focus"); });
+  document.addEventListener("fullscreenchange", () => { if (examActiveFlag && !document.fullscreenElement) triggerViolation("Exited full-screen"); });
+
+  function triggerViolation(reason) {
+    violations++;
+    const banner = document.getElementById('warningBanner');
+    banner.style.display = 'block';
+    banner.textContent = `⚠️ WARNING (${violations}/2): ${reason}! Next violation auto-submits.`;
+    if (violations >= 2) submitExam(`Auto-submitted (${reason})`);
+  }
+
+  async function submitExam(statusNote) {
+    if (!examActiveFlag) return;
+    examActiveFlag = false;
+    clearInterval(examInterval);
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (e) {} }
+
+    let score = 0;
+    runningExam.questions.forEach((item, idx) => {
+      const chosen = document.querySelector(`input[name="q${idx}"]:checked`);
+      if (chosen && chosen.value === item.ans) score++;
+    });
+
+    await db.collection("submissions").add({
+      batch: candidate.batch, exam: runningExam.title, reg: candidate.reg, name: candidate.name,
+      score: `${score}/${runningExam.questions.length}`, status: statusNote, violations,
+      submittedAt: new Date().toLocaleString()
+    });
+
+    document.getElementById('examOverlay').style.display = 'none';
+    alert(`Submitted! Score: ${score}/${runningExam.questions.length}`);
+  }
+
+  function renderSubmissions() {
+    if (!isAdmin) return;
+    const filtered = allSubmissions.filter(s => matchesBatch(s.batch));
+    document.getElementById('submissionsList').innerHTML = filtered.map(s => `
+      <div style="padding:8px 0; border-bottom:1px solid #e2e8f0;">
+        <strong>${s.reg} - ${s.name}</strong> (${s.exam}) | Score: <strong>${s.score}</strong> |
+        <span style="color:${s.violations > 0 ? 'red' : 'green'};">${s.status}</span> (${s.submittedAt})
+      </div>
+    `).join('') || `No exam submissions yet for ${getBatchName(currentBatch)}.`;
+  }
+</script>
+</body>
+</html>
