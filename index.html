@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Class Academic Portal</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --accent: #2563eb;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --danger: #dc2626;
+      --success: #16a34a;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    header h1 { margin: 0; font-size: 1.25rem; }
+    .container { max-width: 900px; margin: 20px auto; padding: 0 16px; }
+    .nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; }
+    .nav button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      background: #e2e8f0;
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .nav button.active { background: var(--accent); color: white; }
+    .card {
+      background: var(--card);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      margin-bottom: 16px;
+    }
+    .section { display: none; }
+    .section.active { display: block; }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+    button.btn {
+      padding: 10px 16px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.btn-danger { background: var(--danger); }
+    button.btn-sm { padding: 6px 10px; font-size: 0.82rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.92rem; }
+    th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    th { background: #f8fafc; }
+    .badge { padding: 3px 8px; border-radius: 99px; font-size: 0.78rem; font-weight: 700; }
+    .badge-date { background: #dbeafe; color: #1e40af; }
+    .admin-only { display: none; border-left: 4px solid var(--accent); }
+    .exam-lock-overlay {
+      position: fixed; inset: 0; background: #0f172a; color: white;
+      z-index: 9999; padding: 24px; overflow-y: auto; display: none;
+    }
+    .no-select { user-select: none; -webkit-user-select: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎓 Student & Faculty Portal</h1>
+  <div>
+    <span id="authStatus" style="font-size:0.85rem; margin-right:10px;">Student View (Read-Only)</span>
+    <button class="btn btn-sm" id="loginToggleBtn" onclick="toggleLoginModal()">Lecturer Login</button>
+    <button class="btn btn-danger btn-sm" id="logoutBtn" style="display:none;" onclick="adminLogout()">Logout</button>
+  </div>
+</header>
+
+<div class="container">
+  <div id="loginBox" class="card" style="display:none; max-width:400px; margin:0 auto 20px;">
+    <h3 style="margin-top:0;">🔐 Faculty Admin Login</h3>
+    <input type="email" id="adminEmail" placeholder="Lecturer Email" />
+    <input type="password" id="adminPass" placeholder="Password" />
+    <button class="btn" onclick="adminLogin()">Sign In as Lecturer</button>
+  </div>
+
+  <div class="nav">
+    <button class="active" onclick="showTab('marks', this)">📊 Marks & Student Details</button>
+    <button onclick="showTab('dates', this)">📅 Important Dates</button>
+    <button onclick="showTab('notes', this)">📚 Lecture Notes</button>
+    <button onclick="showTab('exam', this)">📝 Online Exam Portal</button>
+  </div>
+
+  <div id="marks" class="section active">
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">➕ Add / Update Student Record</h3>
+      <input type="text" id="stuReg" placeholder="Register / Roll Number (e.g., 24BA101)" />
+      <input type="text" id="stuName" placeholder="Student Full Name" />
+      <input type="text" id="stuCourse" placeholder="Subject / Class (e.g., BA 1st Sem Journalism)" />
+      <input type="text" id="stuMarks" placeholder="Marks / Attendance (e.g., IA-1: 18/20 | Attendance: 88%)" />
+      <button class="btn" onclick="saveStudent()">Save / Update Student</button>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Live Student Marks & Records</h3>
+      <input type="text" id="searchReg" placeholder="🔍 Search by Roll Number or Name..." onkeyup="renderStudents()" />
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Roll No.</th>
+              <th>Name</th>
+              <th>Subject</th>
+              <th>Marks & Details</th>
+              <th class="admin-only">Action</th>
+            </tr>
+          </thead>
+          <tbody id="studentsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="dates" class="section">
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">📌 Post Assignment / Exam Date</h3>
+      <input type="date" id="eventDate" />
+      <input type="text" id="eventTitle" placeholder="Title (e.g., Advertising Campaign Submission)" />
+      <textarea id="eventDesc" rows="2" placeholder="Instructions or details..."></textarea>
+      <button class="btn" onclick="addDate()">Publish Date</button>
+    </div>
+    <div id="datesList"></div>
+  </div>
+
+  <div id="notes" class="section">
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">📤 Upload / Share Lecture Notes</h3>
+      <input type="text" id="noteTitle" placeholder="Topic / Chapter Title" />
+      <input type="text" id="noteSubject" placeholder="Subject & Semester" />
+      <input type="url" id="noteLink" placeholder="Google Drive / PDF Link (Make sure link is set to 'Anyone with link can view')" />
+      <textarea id="noteSummary" rows="3" placeholder="Or paste key summary notes directly here..."></textarea>
+      <button class="btn" onclick="addNote()">Publish Notes</button>
+    </div>
+    <div id="notesList"></div>
+  </div>
+
+  <div id="exam" class="section">
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">🛠️ Create Proctored Exam</h3>
+      <input type="text" id="examTitle" placeholder="Exam Title (e.g., Internal Assessment - Unit 1)" />
+      <input type="number" id="examMins" placeholder="Duration in Minutes (e.g., 15)" value="15" />
+      <textarea id="examJson" rows="6" placeholder='Paste questions in this format:
+Q: Who wrote "The Solitary Reaper"? | A: William Wordsworth | B: John Keats | C: P.B. Shelley | ANS: A
+Q: What does PR stand for? | A: Press Release | B: Public Relations | C: Print Report | ANS: B'></textarea>
+      <button class="btn" onclick="publishExam()">Activate Live Exam</button>
+    </div>
+
+    <div class="card admin-only">
+      <h3 style="margin-top:0;">📥 Student Exam Submissions</h3>
+      <div id="submissionsList">No submissions yet.</div>
+    </div>
+
+    <div class="card" id="studentExamLobby">
+      <h3 style="margin-top:0;">🛡️ Proctored Exam Hall</h3>
+      <p style="color:var(--muted); font-size:0.9rem;">
+        <strong>Strict Exam Rules:</strong> Once you start, your screen enters Full-Screen Lockdown.
+        <strong>Do not switch apps, open another browser tab, take screenshots, or exit full-screen.</strong>
+        Leaving the exam screen more than once will automatically lock and submit your paper.
+      </p>
+      <div id="activeExamInfo">Loading exam status...</div>
+    </div>
+  </div>
+</div>
+
+<div id="examOverlay" class="exam-lock-overlay no-select" oncontextmenu="return false;">
+  <div style="max-width:750px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
+      <h2 id="liveExamHeading" style="margin:0; color:#38bdf8;">Exam in Progress</h2>
+      <div id="examTimer" style="font-size:1.5rem; font-weight:800; color:#facc15;">15:00</div>
+    </div>
+    <p id="warningBanner" style="background:#7f1d1d; padding:10px; border-radius:8px; display:none; font-weight:700;"></p>
+    <div id="questionsContainer" style="margin-top:20px;"></div>
+    <button class="btn" style="margin-top:20px; width:100%; padding:14px; font-size:1.1rem;" onclick="submitExam('Completed normally')">Submit Exam</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBVGHkagJ2Ap34oeWhAPKd9r26CnaZXzRU",
+    authDomain: "class-portal-7816f.firebaseapp.com",
+    projectId: "class-portal-7816f",
+    storageBucket: "class-portal-7816f.firebasestorage.app",
+    messagingSenderId: "265892681101",
+    appId: "1:265892681101:web:39e8d51bf3dee115f759c4"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let isAdmin = false;
+  let allStudents = [];
+  let activeExam = null;
+
+  window.toggleLoginModal = () => {
+    const box = document.getElementById('loginBox');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.adminLogin = async () => {
+    const email = document.getElementById('adminEmail').value;
+    const pass = document.getElementById('adminPass').value;
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      document.getElementById('loginBox').style.display = 'none';
+    } catch (err) {
+      alert("Login failed: " + err.message);
+    }
+  };
+
+  window.adminLogout = () => signOut(auth);
+
+  onAuthStateChanged(auth, (user) => {
+    isAdmin = !!user;
+    document.getElementById('authStatus').textContent = isAdmin ? `Lecturer Mode (${user.email})` : "Student View (Read-Only)";
+    document.getElementById('loginToggleBtn').style.display = isAdmin ? 'none' : 'inline-block';
+    document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
+    document.querySelectorAll('.admin-only').forEach(el => {
+      el.style.display = isAdmin ? (el.tagName === 'TH' || el.tagName === 'TD' ? 'table-cell' : 'block') : 'none';
+    });
+    renderStudents();
+  });
+
+  window.showTab = (id, btn) => {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  };
+
+  window.saveStudent = async () => {
+    const reg = document.getElementById('stuReg').value.trim().toUpperCase();
+    const name = document.getElementById('stuName').value.trim();
+    const course = document.getElementById('stuCourse').value.trim();
+    const marks = document.getElementById('stuMarks').value.trim();
+    if (!reg || !name) return alert("Enter Roll Number and Name!");
+    await setDoc(doc(db, "students", reg), { reg, name, course, marks });
+    document.getElementById('stuReg').value = "";
+    document.getElementById('stuName').value = "";
+    document.getElementById('stuCourse').value = "";
+    document.getElementById('stuMarks').value = "";
+  };
+
+  window.editStudent = (reg) => {
+    const s = allStudents.find(x => x.reg === reg);
+    if (!s) return;
+    document.getElementById('stuReg').value = s.reg;
+    document.getElementById('stuName').value = s.name;
+    document.getElementById('stuCourse').value = s.course;
+    document.getElementById('stuMarks').value = s.marks;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  window.deleteStudent = async (reg) => {
+    if (confirm(`Delete ${reg}?`)) await deleteDoc(doc(db, "students", reg));
+  };
+
+  onSnapshot(collection(db, "students"), (snap) => {
+    allStudents = snap.docs.map(d => d.data());
+    renderStudents();
+  });
+
+  window.renderStudents = () => {
+    const filter = document.getElementById('searchReg').value.toLowerCase();
+    const filtered = allStudents.filter(s => s.reg.toLowerCase().includes(filter) || s.name.toLowerCase().includes(filter));
+    document.getElementById('studentsTable').innerHTML = filtered.map(s => `
+      <tr>
+        <td><strong>${s.reg}</strong></td>
+        <td>${s.name}</td>
+        <td>${s.course}</td>
+        <td>${s.marks}</td>
+        ${isAdmin ? `<td>
+          <button class="btn btn-sm" onclick="editStudent('${s.reg}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.reg}')">X</button>
+        </td>` : ''}
+      </tr>
+    `).join('') || `<tr><td colspan="5">No student records found.</td></tr>`;
+  };
+
+  window.addDate = async () => {
+    const date = document.getElementById('eventDate').value;
+    const title = document.getElementById('eventTitle').value.trim();
+    const desc = document.getElementById('eventDesc').value.trim();
+    if (!date || !title) return alert("Enter date and title!");
+    await addDoc(collection(db, "dates"), { date, title, desc });
+    document.getElementById('eventTitle').value = "";
+    document.getElementById('eventDesc').value = "";
+  };
+
+  window.deleteDocItem = async (col, id) => {
+    if (confirm("Delete item?")) await deleteDoc(doc(db, col, id));
+  };
+
+  onSnapshot(query(collection(db, "dates"), orderBy("date", "asc")), (snap) => {
+    document.getElementById('datesList').innerHTML = snap.docs.map(d => {
+      const item = d.data();
+      return `<div class="card">
+        <span class="badge badge-date">📅 ${item.date}</span>
+        ${isAdmin ? `<button class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('dates','${d.id}')">Delete</button>` : ''}
+        <h4 style="margin:8px 0 4px;">${item.title}</h4>
+        <p style="margin:0; color:var(--muted);">${item.desc}</p>
+      </div>`;
+    }).join('') || `<div class="card">No upcoming dates posted.</div>`;
+  });
+
+  window.addNote = async () => {
+    const title = document.getElementById('noteTitle').value.trim();
+    const subject = document.getElementById('noteSubject').value.trim();
+    const link = document.getElementById('noteLink').value.trim();
+    const summary = document.getElementById('noteSummary').value.trim();
+    if (!title) return alert("Enter note title!");
+    await addDoc(collection(db, "notes"), { title, subject, link, summary, created: Date.now() });
+    document.getElementById('noteTitle').value = "";
+    document.getElementById('noteSubject').value = "";
+    document.getElementById('noteLink').value = "";
+    document.getElementById('noteSummary').value = "";
+  };
+
+  onSnapshot(query(collection(db, "notes"), orderBy("created", "desc")), (snap) => {
+    document.getElementById('notesList').innerHTML = snap.docs.map(d => {
+      const n = d.data();
+      return `<div class="card">
+        <span class="badge badge-date">${n.subject || 'General'}</span>
+        ${isAdmin ? `<button class="btn btn-danger btn-sm" style="float:right;" onclick="deleteDocItem('notes','${d.id}')">Delete</button>` : ''}
+        <h4 style="margin:8px 0 6px;">${n.title}</h4>
+        <p style="white-space:pre-wrap; margin:0 0 10px;">${n.summary}</p>
+        ${n.link ? `<a href="${n.link}" target="_blank" class="btn btn-sm" style="text-decoration:none; display:inline-block;">📥 Open / Download Notes</a>` : ''}
+      </div>`;
+    }).join('') || `<div class="card">No notes uploaded yet.</div>`;
+  });
+
+  window.publishExam = async () => {
+    const title = document.getElementById('examTitle').value.trim();
+    const mins = parseInt(document.getElementById('examMins').value, 10) || 15;
+    const raw = document.getElementById('examJson').value.trim();
+    if (!title || !raw) return alert("Enter exam title and questions!");
+
+    const questions = raw.split('\n').map(line => {
+      const parts = line.split('|').map(p => p.trim());
+      return {
+        q: parts[0]?.replace(/^Q:\s*/i, ''),
+        A: parts[1]?.replace(/^A:\s*/i, ''),
+        B: parts[2]?.replace(/^B:\s*/i, ''),
+        C: parts[3]?.replace(/^C:\s*/i, ''),
+        ans: parts[4]?.replace(/^ANS:\s*/i, '').toUpperCase()
+      };
+    }).filter(item => item.q && item.ans);
+
+    await setDoc(doc(db, "exams", "current"), { title, mins, questions, active: true });
+    alert("Exam is now LIVE for students!");
+  };
+
+  onSnapshot(doc(db, "exams", "current"), (snap) => {
+    activeExam = snap.exists() ? snap.data() : null;
+    const lobby = document.getElementById('activeExamInfo');
+    if (activeExam && activeExam.active) {
+      lobby.innerHTML = `
+        <h4>Live Exam: ${activeExam.title} (${activeExam.mins} mins | ${activeExam.questions.length} Questions)</h4>
+        <input type="text" id="examStuReg" placeholder="Enter Your Roll Number" />
+        <input type="text" id="examStuName" placeholder="Enter Your Full Name" />
+        <button class="btn" onclick="startProctoredExam()">🔒 Enter Full-Screen & Start Exam</button>
+      `;
+    } else {
+      lobby.innerHTML = `<p>No active exam right now.</p>`;
+    }
+  });
+
+  let examActiveFlag = false;
+  let violations = 0;
+  let examInterval = null;
+  let candidate = {};
+
+  window.startProctoredExam = async () => {
+    const reg = document.getElementById('examStuReg').value.trim().toUpperCase();
+    const name = document.getElementById('examStuName').value.trim();
+    if (!reg || !name) return alert("Enter your Roll Number and Name first!");
+
+    candidate = { reg, name };
+    violations = 0;
+    examActiveFlag = true;
+
+    try { await document.documentElement.requestFullscreen(); } catch (e) {}
+
+    document.getElementById('liveExamHeading').textContent = activeExam.title;
+    document.getElementById('warningBanner').style.display = 'none';
+    document.getElementById('questionsContainer').innerHTML = activeExam.questions.map((item, idx) => `
+      <div style="background:#1e293b; padding:16px; border-radius:10px; margin-bottom:14px;">
+        <p style="font-weight:700; margin-top:0;">${idx + 1}. ${item.q}</p>
+        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="A" style="width:auto; margin-right:8px;"> ${item.A}</label>
+        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="B" style="width:auto; margin-right:8px;"> ${item.B}</label>
+        <label style="display:block; margin:6px 0;"><input type="radio" name="q${idx}" value="C" style="width:auto; margin-right:8px;"> ${item.C}</label>
+      </div>
+    `).join('');
+
+    document.getElementById('examOverlay').style.display = 'block';
+
+    let seconds = activeExam.mins * 60;
+    examInterval = setInterval(() => {
+      seconds--;
+      const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      document.getElementById('examTimer').textContent = `${m}:${s}`;
+      if (seconds <= 0) submitExam("Time expired");
+    }, 1000);
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (examActiveFlag && document.hidden) triggerViolation("Switched app or browser tab");
+  });
+  window.addEventListener("blur", () => {
+    if (examActiveFlag) triggerViolation("Window lost focus / overlay opened");
+  });
+  document.addEventListener("fullscreenchange", () => {
+    if (examActiveFlag && !document.fullscreenElement) triggerViolation("Exited full-screen mode");
+  });
+
+  function triggerViolation(reason) {
+    violations++;
+    const banner = document.getElementById('warningBanner');
+    banner.style.display = 'block';
+    banner.textContent = `⚠️ SECURITY WARNING (${violations}/2): ${reason}! Next violation will auto-submit your exam.`;
+    if (violations >= 2) {
+      submitExam(`Auto-submitted due to security violation (${reason})`);
+    }
+  }
+
+  window.submitExam = async (statusNote) => {
+    if (!examActiveFlag) return;
+    examActiveFlag = false;
+    clearInterval(examInterval);
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch (e) {}
+    }
+
+    let score = 0;
+    activeExam.questions.forEach((item, idx) => {
+      const chosen = document.querySelector(`input[name="q${idx}"]:checked`);
+      if (chosen && chosen.value === item.ans) score++;
+    });
+
+    await addDoc(collection(db, "submissions"), {
+      exam: activeExam.title,
+      reg: candidate.reg,
+      name: candidate.name,
+      score: `${score}/${activeExam.questions.length}`,
+      status: statusNote,
+      violations,
+      submittedAt: new Date().toLocaleString()
+    });
+
+    document.getElementById('examOverlay').style.display = 'none';
+    alert(`Exam Submitted!\nScore: ${score}/${activeExam.questions.length}\nStatus: ${statusNote}`);
+  };
+
+  onSnapshot(collection(db, "submissions"), (snap) => {
+    if (!isAdmin) return;
+    document.getElementById('submissionsList').innerHTML = snap.docs.map(d => {
+      const s = d.data();
+      return `<div style="padding:8px 0; border-bottom:1px solid #e2e8f0;">
+        <strong>${s.reg} - ${s.name}</strong> | Score: <strong>${s.score}</strong> |
+        <span style="color:${s.violations > 0 ? 'red' : 'green'};">${s.status}</span> (${s.submittedAt})
+      </div>`;
+    }).join('') || "No submissions yet.";
+  });
+</script>
+</body>
+</html>
